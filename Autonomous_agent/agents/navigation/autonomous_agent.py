@@ -17,7 +17,7 @@ from agents.navigation.local_planner import LocalPlanner
 from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO
 
-class BasicAgent(Agent):
+class AutonomousAgent(Agent):
     """
     BasicAgent implements a basic agent that navigates scenes to reach a given
     target destination. This agent respects traffic lights and other vehicles.
@@ -28,7 +28,7 @@ class BasicAgent(Agent):
 
         :param vehicle: actor to apply to local planner logic onto
         """
-        super(BasicAgent, self).__init__(vehicle)
+        super(AutonomousAgent, self).__init__(vehicle)
 
         self._proximity_threshold = 10.0  # meters
         self._state = AgentState.NAVIGATING
@@ -81,44 +81,21 @@ class BasicAgent(Agent):
 
         return route
 
-    def run_step(self, debug=False):
+    def run_step(self, recorder, debug=False):
         """
         Execute one step of navigation.
         :return: carla.VehicleControl
         """
-
-        # is there an obstacle in front of us?
-        hazard_detected = False
-
-        # retrieve relevant elements for safe navigation, i.e.: traffic lights
-        # and other vehicles
         actor_list = self._world.get_actors()
-        vehicle_list = actor_list.filter("*vehicle*")
+        self._state = AgentState.NAVIGATING
+
         lights_list = actor_list.filter("*traffic_light*")
-
-        # check possible obstacles
-        vehicle_state, vehicle = self._is_vehicle_hazard(vehicle_list)
-        if vehicle_state:
-            if debug:
-                print('!!! VEHICLE BLOCKING AHEAD [{}])'.format(vehicle.id))
-
-            self._state = AgentState.BLOCKED_BY_VEHICLE
-            hazard_detected = True
 
         # check for the state of the traffic lights
         light_state, traffic_light = self._is_light_red(lights_list)
         if light_state:
             if debug:
                 print('=== RED LIGHT AHEAD [{}])'.format(traffic_light.id))
-
-            self._state = AgentState.BLOCKED_RED_LIGHT
-            hazard_detected = True
-
-        if hazard_detected:
-            control = self.emergency_stop()
-        else:
-            self._state = AgentState.NAVIGATING
-            # standard local planner behavior
-            control = self._local_planner.run_step()
+        control = self._local_planner.run_step(recorder)
 
         return control

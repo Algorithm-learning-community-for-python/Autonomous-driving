@@ -13,7 +13,7 @@ from collections import deque
 import random
 
 import carla
-from agents.navigation.controller import VehiclePIDController
+from agents.navigation.controller import ImitatorController
 from agents.tools.misc import distance_vehicle, draw_waypoints
 
 
@@ -90,7 +90,7 @@ class LocalPlanner(object):
         self._vehicle = None
         print("Resetting ego-vehicle!")
 
-    def _init_controller(self, opt_dict):
+    def _init_controller(self, opt_dict={}):
         """
         Controller initialization.
 
@@ -102,16 +102,6 @@ class LocalPlanner(object):
         self._target_speed = 20.0  # Km/h
         self._sampling_radius = self._target_speed * 1 / 3.6  # 1 seconds horizon
         self._min_distance = self._sampling_radius * self.MIN_DISTANCE_PERCENTAGE
-        args_lateral_dict = {
-            'K_P': 1.95,
-            'K_D': 0.01,
-            'K_I': 1.4,
-            'dt': self._dt}
-        args_longitudinal_dict = {
-            'K_P': 1.0,
-            'K_D': 0,
-            'K_I': 1,
-            'dt': self._dt}
 
         # parameters overload
         if opt_dict:
@@ -122,16 +112,9 @@ class LocalPlanner(object):
             if 'sampling_radius' in opt_dict:
                 self._sampling_radius = self._target_speed * \
                     opt_dict['sampling_radius'] / 3.6
-            if 'lateral_control_dict' in opt_dict:
-                args_lateral_dict = opt_dict['lateral_control_dict']
-            if 'longitudinal_control_dict' in opt_dict:
-                args_longitudinal_dict = opt_dict['longitudinal_control_dict']
-
+         
         self._current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
-        self._vehicle_controller = VehiclePIDController(self._vehicle,
-                                                       args_lateral=args_lateral_dict,
-                                                       args_longitudinal=args_longitudinal_dict)
-
+        self._vehicle_controller = ImitatorController(self._vehicle)
         self._global_plan = False
 
         # compute initial waypoints
@@ -186,7 +169,7 @@ class LocalPlanner(object):
         self._target_road_option = RoadOption.LANEFOLLOW
         self._global_plan = True
 
-    def run_step(self, debug=True):
+    def run_step(self, recorder, debug=False):
         """
         Execute one step of local planning which involves running the longitudinal and lateral PID controllers to
         follow the waypoints trajectory.
@@ -223,8 +206,9 @@ class LocalPlanner(object):
         # target waypoint
         self.target_waypoint, self._target_road_option = self._waypoint_buffer[0]
         # move using PID controllers
-        print(self._target_road_option)
-        control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint)
+        if self._target_road_option != RoadOption.LANEFOLLOW:
+            print(self._target_road_option)
+        control = self._vehicle_controller.run_step(recorder)
 
         # purge the queue of obsolete waypoints
         vehicle_transform = self._vehicle.get_transform()

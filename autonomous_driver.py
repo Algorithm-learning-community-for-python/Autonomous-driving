@@ -68,7 +68,7 @@ except ImportError:
 # -- find carla module ---------------------------------------------------------
 # ==============================================================================
 try:
-    sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
+    sys.path.append(glob.glob('carla/dist/carla-*%d.%d-%s.egg' % (
         sys.version_info.major,
         sys.version_info.minor,
         'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
@@ -79,13 +79,14 @@ except IndexError:
 # -- add PythonAPI for release mode --------------------------------------------
 # ==============================================================================
 try:
-    sys.path.append(glob.glob('../../PythonAPI/carla')[0])
+    sys.path.append(glob.glob('Autonomous_agent')[0])
 except IndexError:
     pass
 
 import carla
 from carla import ColorConverter as cc
-from agents.navigation.basic_agent import BasicAgent
+from agents.navigation.autonomous_agent import AutonomousAgent
+from agents.navigation.local_planner import RoadOption
 
 
 # ==============================================================================
@@ -114,6 +115,7 @@ class World(object):
         self.map = self.world.get_map()
         self.hud = hud
         self.player = None
+        self.recorder = None
         self.collision_sensor = None
         self.lane_invasion_sensor = None
         self.gnss_sensor = None
@@ -208,7 +210,7 @@ class KeyboardControl(object):
         self._steer_cache = 0.0
         world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
 
-    def parse_events(self, client, world, clock):
+    def parse_events(self, client, world, clock, recorder):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True
@@ -233,6 +235,9 @@ class KeyboardControl(object):
                     world.camera_manager.set_sensor(event.key - 1 - K_0)
                 elif event.key == K_r and not (pygame.key.get_mods() & KMOD_CTRL):
                     world.camera_manager.toggle_recording()
+                    if  not world.camera_manager._recording:
+                        recorder.stop_recording()
+
                 elif event.key == K_r and (pygame.key.get_mods() & KMOD_CTRL):
                     if (world.recording_enabled):
                         client.stop_recorder()
@@ -712,9 +717,114 @@ class CameraManager(object):
             array = array[:, :, :3]
             array = array[:, :, ::-1]
             self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
-        if self.recording:
-            image.save_to_disk('_out/%08d' % image.frame_number)
+        #if self.recording:
+            #image.save_to_disk('_out/%08d' % image.frame_number)
 
+
+# ==============================================================================
+# -- Recorder() ---------------------------------------------------------------
+# ==============================================================================
+
+class Recorder():
+    def __init__(self, world, agent):
+        self.recording_text = []
+        self.images = []
+        self.world = world
+        self.directions = []
+        self.current_direction = RoadOption.LANEFOLLOW
+        self.agent = agent
+        self.temp_steering = []
+        self.speed = 0
+        self.camera_transform = carla.Transform(carla.Location(x=1.6, z=1.7))
+        self._sensor = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
+        server_world = world.player.get_world()
+        bp_library = server_world.get_blueprint_library()
+        bp = bp_library.find('sensor.camera.rgb')
+        bp.set_attribute('image_size_x', '160')
+        bp.set_attribute('image_size_y', '90')
+        self._sensor.append(bp)
+        print(self.world.player)
+        self.sensor = server_world.spawn_actor(
+            self._sensor[-1],
+            self.camera_transform,
+            attach_to=self.world.player)
+
+        weak_self = weakref.ref(self)
+        self.sensor.listen(lambda image: Recorder.record(weak_self, image))
+
+    @staticmethod
+    def record(weak_self, image):
+        self = weak_self()
+        self.record_direction(self.world, image.frame_number)
+        self.record_output(self.world, image.frame_number)
+        self.record_image(image)
+
+    def stop_recording(self):
+        for recording in self.recording_text:
+            if self.directions:
+                recording["Direction"] = self.directions.pop(0)
+            else:
+                print("No directions left")
+                break
+
+        toCSV = self.recording_text
+        keys = toCSV[0].keys()
+        with open('Testing/recording.csv', 'wb') as f:
+            dict_writer = csv.DictWriter(f, keys)
+            dict_writer.writeheader()
+            dict_writer.writerows(toCSV)
+        self.recording_text = []
+        for image in self.images:
+            image.save_to_disk('Testing/_out/%08d' % image.frame_number)
+        self.images = []
+        
+
+    def record_output(self, world, frame_number):
+            control = world.player.get_control()
+            v = world.player.get_velocity()
+            self.speed = (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))
+            speed_limit = world.player.get_speed_limit()
+            is_at_traffic_light = world.player.is_at_traffic_light()
+            traffic_light = world.player.get_traffic_light()
+            traffic_light_state = world.player.get_traffic_light_state()
+            self.recording_text.append({
+                'frame': frame_number,
+                'Speed': self.speed,
+                'Throttle': control.throttle,
+                'Steer': control.steer,
+                'Brake': control.brake,
+                'Reverse': control.reverse,
+                'Hand brake': control.hand_brake,
+                'Manual': control.manual_gear_shift,
+                'Gear': control.gear,
+                'speed_limit': speed_limit,
+                'at_TL': is_at_traffic_light,
+                'TL': traffic_light,
+                'TL_state': traffic_light_state
+            })
+    def record_image(self, image):
+            image.convert(cc.Raw)
+            self.images.append(image)
+
+    def record_direction(self, world, frame_number):
+        control = world.player.get_control()
+        steering = control.steer
+        direction = self.agent._local_planner._target_road_option
+        if direction == RoadOption.LANEFOLLOW:
+            if self.temp_steering:
+                average_steering = sum(self.temp_steering) / len(self.temp_steering)
+                if average_steering > 0:
+                    d = RoadOption.RIGHT
+                else:
+                    d = RoadOption.LEFT
+                for i in range(len(self.temp_steering)-1):
+                    self.directions.append(d)
+                self.temp_steering=[]
+            else:
+                self.directions.append(direction)
+
+        if direction == RoadOption.LEFT or direction == RoadOption.RIGHT:
+            self.temp_steering.append(steering)                
 
 # ==============================================================================
 # -- game_loop() ---------------------------------------------------------
@@ -737,18 +847,18 @@ def game_loop(args):
         world = World(client.get_world(), hud, args.filter)
         controller = KeyboardControl(world, False)
 
-        if args.agent == "Roaming":
-            agent = RoamingAgent(world.player)
-        else:
-            agent = BasicAgent(world.player)
-            spawn_point = world.map.get_spawn_points()[0]
-            agent.set_destination((spawn_point.location.x,
-                                   spawn_point.location.y,
-                                   spawn_point.location.z))
+        ### NB: Random start point each time
+        agent = AutonomousAgent(world.player)
+        spawn_point = world.map.get_spawn_points()[0]
+        agent.set_destination((spawn_point.location.x,
+                               spawn_point.location.y,
+                               spawn_point.location.z))
 
+        recorder = Recorder(world, agent)
+        world.recorder = recorder
         clock = pygame.time.Clock()
         while True:
-            if controller.parse_events(client, world, clock):
+            if controller.parse_events(client, world, clock, recorder):
                 return
 
             # as soon as the server is ready continue!
@@ -758,7 +868,7 @@ def game_loop(args):
             world.tick(clock)
             world.render(display)
             pygame.display.flip()
-            control = agent.run_step()
+            control = agent.run_step(recorder)
             control.manual_gear_shift = False
             world.player.apply_control(control)
 
