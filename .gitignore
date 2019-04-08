@@ -3,3 +3,4 @@ examples
 util
 Training_data
 python_api.md
+*.pyc
