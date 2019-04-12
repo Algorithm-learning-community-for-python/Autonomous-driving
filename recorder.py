@@ -179,6 +179,7 @@ class World(object):
 
     def destroy_sensors(self):
         self.camera_manager.sensor.destroy()
+        self.recorder.sensor.destroy()
         self.camera_manager.sensor = None
         self.camera_manager.index = None
 

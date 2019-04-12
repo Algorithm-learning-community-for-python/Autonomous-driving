@@ -114,7 +114,7 @@ class LocalPlanner(object):
                     opt_dict['sampling_radius'] / 3.6
          
         self._current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
-        self._vehicle_controller = ImitatorController(self._vehicle)
+        self._vehicle_controller = ImitatorController(self._vehicle, self)
         self._global_plan = False
 
         # compute initial waypoints
