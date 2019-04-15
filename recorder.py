@@ -125,7 +125,7 @@ class World(object):
         self.camera_manager = None
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
-        self._actor_filter = actor_filter
+        self._actor_filter = 'vehicle.bmw.grandtourer'
         self.restart()
         self.world.on_tick(hud.on_world_tick)
         self.recording_enabled = False
@@ -150,6 +150,7 @@ class World(object):
             self.destroy()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         while self.player is None:
+            #spawn_point = self.map.get_spawn_points()[-1]
             spawn_points = self.map.get_spawn_points()
             spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
@@ -656,6 +657,8 @@ class CameraManager(object):
             if item[0].startswith('sensor.camera'):
                 bp.set_attribute('image_size_x', str(hud.dim[0]))
                 bp.set_attribute('image_size_y', str(hud.dim[1]))
+                #bp.set_attribute('fov', '110')
+
             elif item[0].startswith('sensor.lidar'):
                 bp.set_attribute('range', '5000')
             item.append(bp)
@@ -771,8 +774,11 @@ class Recorder():
         server_world = world.player.get_world()
         bp_library = server_world.get_blueprint_library()
         bp = bp_library.find('sensor.camera.rgb')
-        bp.set_attribute('image_size_x', '160')
-        bp.set_attribute('image_size_y', '90')
+        bp.set_attribute('image_size_x', '320')
+        bp.set_attribute('image_size_y', '240')
+        #bp.set_attribute('fov', '120')
+        bp.set_attribute('sensor_tick', '0.20')
+
         self._sensor.append(bp)
         print(self.world.player)
         self.sensor = server_world.spawn_actor(
@@ -787,13 +793,13 @@ class Recorder():
     def record(weak_self, image):
         self = weak_self()
         if self.world.camera_manager.recording:
-            current_time = pygame.time.get_ticks()
-            delta_time = current_time - self.previous_time
-            if delta_time > 250:
-                self.previous_time = current_time
-                self.record_direction(self.world, image.frame_number)
-                self.record_output(self.world, image.frame_number)
-                self.record_image(image)
+            #current_time = pygame.time.get_ticks()
+            #delta_time = current_time - self.previous_time
+            #if delta_time > 250:
+                #self.previous_time = current_time
+            self.record_direction(self.world, image.frame_number)
+            self.record_output(self.world, image.frame_number)
+            self.record_image(image)
 
     def stop_recording(self):
         for recording in self.recording_text:
@@ -913,6 +919,8 @@ def game_loop(args):
 
     finally:
         if world is not None:
+            if recorder.sensor is not None:
+                recorder.sensor.destroy()
             world.destroy()
 
         pygame.quit()

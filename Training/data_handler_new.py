@@ -6,10 +6,10 @@ import os
 import warnings
 from sklearn.model_selection import train_test_split
 import numpy as np
-
+import scipy
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import OneHotEncoder
-
+import random
 
 class DataHandler():
     def __init__(self, atrX=None, atrY=None, train_valid_split=0.2):
@@ -28,6 +28,8 @@ class DataHandler():
 
         self.trainY = None              # Contains random subset of rows defined by train_valid_split and the collums Defined by atrY
         self.validY = None              # Contains random subset of rows defined by train_valid_split and the collums Defined by atrY
+        self.bottom_crop = 115
+        self.top_crop = 100 
 
         self.fetch_data()
 
@@ -38,10 +40,15 @@ class DataHandler():
 
         data_paths=[]
         for folder in os.listdir('../Training_data'):
-            data_paths.append("../Training_data/"+folder)
+            data_paths.append("../Training_data/" + folder)
 
         for path in data_paths:
             measurment_recording = pd.read_csv(path + measurements_path )
+            print("Shape before filtering: ")
+            print(measurment_recording.shape)
+            measurment_recording = self.filter_input(measurment_recording)
+            print("Shape after filtering: ")
+            print(measurment_recording.shape)
             self.data_as_recordings.append(measurment_recording)
 
         for j, measurment_recording in enumerate(self.data_as_recordings):
@@ -62,6 +69,11 @@ class DataHandler():
 
                 # Converting to rgb
                 img = img[..., ::-1]
+
+                # Cropping
+                img = img[self.top_crop:, :,:]
+                #img = cv2.resize(img,(200,88))
+
                 # Add to recording
                 measurment_recording.at[index, "Image"] = np.array(img)
 
@@ -112,14 +124,17 @@ class DataHandler():
 
 
     def get_values_as_numpy_arrays(self, values):
-        print(values)
         new_shape = values.shape + values[0].shape
-        print("New shape: " + str(new_shape))
         new_values = []
         for value in values:
             new_values.append(value)
         
         return np.array(new_values).reshape(new_shape)
+
+    def filter_input(self, df):
+        #df = df.drop(df[(df.score < 50) & (df.score > 20)].index)
+        df = df.drop(df[(np.power(df.Steer,2) < 0.001) & (random.randint(0,10) > 3) ].index)
+        return df
 
     def plot_data(self, data=None, images=None):
         if data == None:

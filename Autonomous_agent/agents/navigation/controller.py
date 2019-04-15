@@ -57,6 +57,8 @@ class ImitatorController():
             "RoadOption.CHANGELANELEFT",
             "RoadOption.CHANGELANERIGHT"
         ]
+        self.top_crop = 100
+
         self.label_encoder = LabelEncoder()
         self.label_encoder.fit(self.direction_categories)
         integer_encoded = self.label_encoder.transform(self.direction_categories)
@@ -78,9 +80,10 @@ class ImitatorController():
 
         if recorder.images:
             img = self.to_rgb_array(recorder.images[-1])
+            img = img[self.top_crop:, :,:]
             #print("################     PREDICTING      ################")
             #TODO: RUN NN to predict throttle and steering
-            control = self.model.predict([np.array(img).reshape(1,90,160,3), direction], batch_size=1)
+            control = self.model.predict([np.array(img).reshape(1,140,320,3), direction], batch_size=1)
             #print(control)
         else:
             control = [[0]]
@@ -113,6 +116,3 @@ class ImitatorController():
         array = array[:, :, :3]
         array = array[:, :, ::-1]
         return array
-    
-def hsv_convert(x):
-    return tf.image.rgb_to_hsv(x)  

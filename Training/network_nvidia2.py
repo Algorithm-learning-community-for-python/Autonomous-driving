@@ -63,6 +63,9 @@ class NetworkHandler():
         x = Dense(output_size, activation=function)(x)
         return x
     
+def hsv_convert(x):
+    import tensorflow as tf
+    return tf.image.rgb_to_hsv(x)  
 
 def load_network(input_size_data, input_data):
     inputs = []
@@ -70,29 +73,31 @@ def load_network(input_size_data, input_data):
     inputs.append(x)
     net = NetworkHandler()
 
+    x = Lambda(hsv_convert)(x)
+
     # CONV 1
-    #x = net.conv_block(x, filters=32, kernel_size=5, stride=2, padding='VALID')
-    x = net.conv(x, 24, 5, 2, padding='VALID', activation="relu")
+    x = net.conv(x, 3, 1, 1, padding='VALID', activation="relu")
     print(x)
 
     # CONV 2
-    x = net.conv(x, 36, 5, 2, padding='VALID', activation="relu")
+    x = net.conv(x, 32, 3, 1, padding='VALID', activation="relu")
+    x = net.conv(x, 32, 3, 1, padding='VALID', activation="relu")
+    x = net.max_pool(x)
+    x = net.dropout(x, rate=0.5)
     print(x)
 
     # CONV 3
-    x = net.conv(x, 48, 3, 2, padding='VALID', activation="relu")
+    x = net.conv(x, 64, 3, 1, padding='VALID', activation="relu")
+    x = net.conv(x, 64, 3, 1, padding='VALID', activation="relu")
+    x = net.max_pool(x)
+    x = net.dropout(x, rate=0.5)    
     print(x)
 
     # CONV 4
-    x = net.conv(x, 64, 3, 1, padding='VALID', activation="relu")
-    print(x)
-
-    # CONV 5
-    x = net.conv(x, 64, 3, 1, padding='VALID', activation="relu")
-    print(x)
-
-    # CONV 6
-    x = net.dropout(x, rate=0.5)
+    x = net.conv(x, 128, 3, 1, padding='VALID', activation="relu")
+    x = net.conv(x, 128, 3, 1, padding='VALID', activation="relu")
+    x = net.max_pool(x)
+    x = net.dropout(x, rate=0.5)    
     print(x)
 
     # FLATTEN
@@ -100,10 +105,8 @@ def load_network(input_size_data, input_data):
     print(x)
 
     # Fully connected 1
-    x = net.dense(x, 100, function="relu")
+    x = net.dense(x, 512, function="relu")
 
-    # Fully connected 2
-    x = net.dense(x, 50, function="relu")
 
 
     #######     INPUT DATA     #######
@@ -161,8 +164,10 @@ def load_network(input_size_data, input_data):
         speed_limit = net.dropout(speed_limit, 0.5)
         #Concatinate
         x = concatenate([x, speed_limit], 1)
-        
-    x = net.dense(x, 10)
+
+
+    x = net.dense(x, 64, function="relu")
+    x = net.dense(x, 16, function="relu")
     x = net.dense(x, input_size_data["Output"])
 
     net.model = Model(inputs=inputs, outputs=x)

@@ -4,3 +4,7 @@ util
 Training_data
 python_api.md
 *.pyc
+
+Stored_models
+Training/model.h5
+Training/model.png

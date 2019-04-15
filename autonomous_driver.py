@@ -122,7 +122,7 @@ class World(object):
         self.camera_manager = None
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
-        self._actor_filter = actor_filter
+        self._actor_filter = 'vehicle.bmw.grandtourer'
         self.restart()
         self.world.on_tick(hud.on_world_tick)
         self.recording_enabled = False
@@ -147,8 +147,9 @@ class World(object):
             self.destroy()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         while self.player is None:
-            spawn_points = self.map.get_spawn_points()
-            spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
+            spawn_point = self.map.get_spawn_points()[-1]
+            #spawn_points = self.map.get_spawn_points()
+            #spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
@@ -740,8 +741,8 @@ class Recorder():
         server_world = world.player.get_world()
         bp_library = server_world.get_blueprint_library()
         bp = bp_library.find('sensor.camera.rgb')
-        bp.set_attribute('image_size_x', '160')
-        bp.set_attribute('image_size_y', '90')
+        bp.set_attribute('image_size_x', '320')
+        bp.set_attribute('image_size_y', '240')
         self._sensor.append(bp)
         print(self.world.player)
         self.sensor = server_world.spawn_actor(

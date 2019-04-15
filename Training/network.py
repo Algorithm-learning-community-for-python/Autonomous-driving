@@ -143,11 +143,11 @@ def load_network(input_size_data, input_data):
         direction = Input(input_size_data["Direction"], name="input_direction")
         inputs.append(direction)
         # Fully connected 1
-        #direction = net.dense(direction, 4)
-        #direction = net.dropout(direction, 0.5)
+        direction = net.dense(direction, 32)
+        direction = net.dropout(direction, 0.5)
         # Fully connected 2
-        #direction = net.dense(direction, 128)
-        #direction = net.dropout(direction, 0.5)
+        direction = net.dense(direction, 32)
+        direction = net.dropout(direction, 0.5)
         #Concatinate
         x = concatenate([x, direction], 1)
 

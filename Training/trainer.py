@@ -15,12 +15,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
-
+import pickle
 
 
 #local Classes
 from data_handler_new import DataHandler
 from network import NetworkHandler, load_network
+
+class Conf:
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
 
 class Trainer():
     def __init__(self):
@@ -34,7 +38,7 @@ class Trainer():
             "TL": False,
         }
         self.input_size_data ={
-            "Image": [90,160,3],
+            "Image": [140, 320,3],
             "Direction": [7],
             "Speed": [1],
             "SL": [1],
@@ -56,12 +60,23 @@ class Trainer():
             "Yellow",
             "Red"
         ]
-
+        lr = 0.0001
+        args = {
+            "loss": "mse",
+            "optimizer": Adam(lr),
+            "lr": lr,
+            "metrics": None,
+            "epochs": 2,
+            "batch_size": 32,
+        }
+        self.conf = Conf(**args)
+        print(self.conf.__dict__)
         self.train_valid_split=0.2
         self.data_handler = None
         self.network_handler = None
+        self.history = None
         self.optimizer = Adam()
-    
+        self.model = None
 
         self.init_data_handler()
         self.init_network()
@@ -71,7 +86,6 @@ class Trainer():
         self.data_handler = DataHandler(atrX=self.atrX, atrY=self.atrY, train_valid_split=self.train_valid_split)
         
         #Convert fields to one_hot_encoding
-        # TODO: do this when recording
         ohe_directions = self.data_handler.get_one_hot_encoded(self.direction_categories, self.data_handler.data.Direction)
         ohe_tl_state = self.data_handler.get_one_hot_encoded(self.tl_categories, self.data_handler.data.TL_state)
         
@@ -101,7 +115,7 @@ class Trainer():
 
 
     def train(self):
-        model = self.network_handler.model
+        self.model = self.network_handler.model
         
         train_dir = self.data_handler.trainX.Direction.values
         train_dir = self.data_handler.get_values_as_numpy_arrays(train_dir)
@@ -118,15 +132,69 @@ class Trainer():
         trainY = self.data_handler.trainY.values
         validY = self.data_handler.validY.values
         
-        model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
-        model.fit(
+        self.model.compile(loss=self.conf.loss, optimizer=self.conf.optimizer, metrics=self.conf.metrics)
+        self.history = self.model.fit(
             [train_img, train_dir],
             trainY,
             validation_data=([valid_img, valid_dir], validY),
-            epochs=100,
-            batch_size=32
+            epochs=self.conf.epochs,
+            batch_size=self.conf.batch_size
         )
-        model.save('model.h5')
+        self.model.save('model.h5')
+
+    def store_results(self, folder=None):
+        if folder:
+            folder = folder
+        else:
+            last_folder = 0
+            for folder in os.listdir('Stored_models'):
+                if int(folder) >= last_folder:
+                    last_folder = int(folder)+1
+            folder = last_folder 
+
+        path = "Stored_models/" + str(folder)
+
+        try:  
+            os.mkdir(path)
+
+        except OSError:  
+            print ("Creation of the directory %s failed" % path)
+        else:  
+            print ("Successfully created the directory %s " % path)
+        
+        # Stores to mmuch
+        #with open(path +"/Trainer" + ".pkl", "wb+") as f:
+        #    pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+        a = self.conf.__dict__
+        #print(a)
+        
+        f = open(path + "/conf.txt", "wb+")
+        f.write(str(a)+ "\n")
+        f.write(str(self.input_data)+ "\n")
+        f.write(str(self.input_size_data)+ "\n")
+        f.write(str(self.history.history)+ "\n")
+        f.close()
+
+    def plot_training_results(self):
+        # summarize history for accuracy
+        plt.plot(self.history.history['acc'])
+        plt.plot(self.history.history['val_acc'])
+        plt.title('model accuracy')
+        plt.ylabel('accuracy')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'test'], loc='upper left')
+        plt.show()
+        # summarize history for loss
+        plt.plot(self.history.history['loss'])
+        plt.plot(self.history.history['val_loss'])
+        plt.title('model loss')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'test'], loc='upper left')
+        plt.show()
+
 trainer = Trainer()
-trainer.train()
 #trainer.data_handler.plot_data()
+trainer.train()
+trainer.store_results()
+#trainer.plot_training_results()
