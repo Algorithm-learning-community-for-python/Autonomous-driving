@@ -6,5 +6,5 @@ python_api.md
 *.pyc
 
 Stored_models
-Training/model.h5
 Training/model.png
+Training/model.h5

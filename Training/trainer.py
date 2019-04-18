@@ -165,13 +165,21 @@ class Trainer():
         # Stores to mmuch
         #with open(path +"/Trainer" + ".pkl", "wb+") as f:
         #    pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
-        a = self.conf.__dict__
-        #print(a)
-        
+
+        #Store model
+        self.model.save(path + "/model.h5")
+
+        #Store image of model
+        plot_model(self.network_handler.model, to_file=path + '/model.png')
+
+
         f = open(path + "/conf.txt", "wb+")
-        f.write(str(a)+ "\n")
+        # Store config
+        f.write(str(self.conf.__dict__)+ "\n")
+        # Store settings
         f.write(str(self.input_data)+ "\n")
         f.write(str(self.input_size_data)+ "\n")
+        #Store training history
         f.write(str(self.history.history)+ "\n")
         f.close()
 
