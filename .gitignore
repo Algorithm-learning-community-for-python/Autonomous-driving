@@ -8,3 +8,6 @@ python_api.md
 Stored_models
 Training/model.png
 Training/model.h5
+
+.idea/
+venv/

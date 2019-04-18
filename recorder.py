@@ -902,6 +902,9 @@ def game_loop(args):
         world.recorder = recorder
 
         clock = pygame.time.Clock()
+        # Start controller straight away
+        world.camera_manager.toggle_recording()
+
         while True:
             if controller.parse_events(client, world, clock, recorder):
                 return
@@ -909,6 +912,12 @@ def game_loop(args):
             # as soon as the server is ready continue!
             if not world.world.wait_for_tick(10.0):
                 continue
+
+            # Stop recorder when target destination has been reached
+            if len(agent._local_planner.__waypoints_queue) == 0:
+                world.camera_manager.toggle_recording()
+                recorder.stop_recording()
+                return
 
             world.tick(clock)
             world.render(display)
