@@ -914,7 +914,7 @@ def game_loop(args):
                 continue
 
             # Stop recorder when target destination has been reached
-            if len(agent._local_planner.__waypoints_queue) == 0:
+            if len(agent._local_planner._waypoints_queue) == 0:
                 world.camera_manager.toggle_recording()
                 recorder.stop_recording()
                 return

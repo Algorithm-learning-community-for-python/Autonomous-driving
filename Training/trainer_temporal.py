@@ -19,8 +19,8 @@ import pickle
 
 
 #local Classes
-from data_handler_spatial import DataHandler
-from network import NetworkHandler, load_network
+from data_handler_temporal import DataHandler
+from network_temporal import NetworkHandler, load_network
 
 class Conf:
     def __init__(self, **entries):
@@ -46,7 +46,7 @@ class Trainer():
             "Output": 1,
         }
         self.direction_categories = [
-            "RoadOption.VOID", 
+            "RoadOption.VOID",
             "RoadOption.LEFT",
             "RoadOption.RIGHT",
             "RoadOption.STRAIGHT",
@@ -79,29 +79,11 @@ class Trainer():
         self.model = None
 
         self.init_data_handler()
-        self.init_network()
+        #self.init_network()
 
     def init_data_handler(self):
         # Sets Data, dataX and dataY
         self.data_handler = DataHandler(atrX=self.atrX, atrY=self.atrY, train_valid_split=self.train_valid_split)
-        
-        #Convert fields to one_hot_encoding
-        ohe_directions = self.data_handler.get_one_hot_encoded(self.direction_categories, self.data_handler.data.Direction)
-        ohe_tl_state = self.data_handler.get_one_hot_encoded(self.tl_categories, self.data_handler.data.TL_state)
-        
-        # Insert one_hot_encoding into the dataframe
-        if self.input_data["Direction"]:
-            for index, _ in self.data_handler.data.iterrows():
-                self.data_handler.data.at[index, "Direction"] = ohe_directions[index]
-        
-        if self.input_data["TL"]:
-            for index, _ in self.data_handler.data.iterrows():
-                self.data_handler.data.at[index, "TL_state"] = ohe_tl_state[index]
-        if self.input_data["Speed"]:
-            for index, _ in self.data_handler.data.iterrows():
-                speed = np.array([self.data_handler.data.loc[index,"Speed"]])
-                self.data_handler.data.at[index, "Speed"] = speed
-        
         # Set dataX, dataY
         self.data_handler.set_XY_data(self.atrX, self.atrY, train_valid_split=False)
         # Set training_data, validation_data,
@@ -202,7 +184,7 @@ class Trainer():
         plt.show()
 
 trainer = Trainer()
-#trainer.data_handler.plot_data()
-trainer.train()
-trainer.store_results()
+trainer.data_handler.plot_data()
+#trainer.train()
+#trainer.store_results()
 #trainer.plot_training_results()
