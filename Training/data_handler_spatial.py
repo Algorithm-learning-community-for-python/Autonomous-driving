@@ -29,7 +29,7 @@ class DataHandler():
         self.trainY = None              # Contains random subset of rows defined by train_valid_split and the collums Defined by atrY
         self.validY = None              # Contains random subset of rows defined by train_valid_split and the collums Defined by atrY
         self.bottom_crop = 115
-        self.top_crop = 100 
+        self.top_crop = 70
 
         self.fetch_data()
 
@@ -81,7 +81,7 @@ class DataHandler():
 
     def set_train_valid_split(self, test_size=0.25): 
         data = self.get_data(as_one_list=True)
-        split = train_test_split(data, test_size=0.25)
+        split = train_test_split(data, test_size=test_size)
         (self.training_data, self.validation_data) = split
 
     
@@ -115,7 +115,7 @@ class DataHandler():
         integer_encoded = label_encoder.transform(categories)
         integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)
         onehot_encoder = OneHotEncoder(sparse=False)
-        onehot_encoded = onehot_encoder.fit(integer_encoded)
+        onehot_encoder = onehot_encoder.fit(integer_encoded)
         ### Encode values
         integer_encoded = label_encoder.transform(values)
         integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)

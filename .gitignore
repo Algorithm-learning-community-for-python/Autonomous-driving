@@ -6,8 +6,8 @@ python_api.md
 *.pyc
 
 Stored_models
-Training/model.png
-Training/model.h5
-
+*.png
+*.h5
+*.DS_Store
 .idea/
 venv/

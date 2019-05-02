@@ -19,7 +19,7 @@ import pickle
 
 
 #local Classes
-from data_handler_new import DataHandler
+from data_handler_spatial import DataHandler
 from network import NetworkHandler, load_network
 
 class Conf:
