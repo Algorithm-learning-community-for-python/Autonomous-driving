@@ -11,7 +11,10 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import OneHotEncoder
 import random
 
-class DataHandler():
+# TODO: delete and replace with generator
+
+
+class DataHandler:
     def __init__(self, atrX=None, atrY=None, train_valid_split=0.2):
         
         self.data = None                # Contains all data 
@@ -72,7 +75,7 @@ class DataHandler():
 
     
     def set_XY_data(self, atrX, atrY, train_valid_split=True):
-        if train_valid_split == True:        
+        if train_valid_split:
             self.trainX, self.validX = self.get_attributes(atrX)
             self.trainY, self.validY = self.get_attributes(atrY)
         else: 
@@ -80,7 +83,7 @@ class DataHandler():
             self.dataY = self.get_attributes(atrY, train_valid_split=False)
     
     def get_attributes(self, atr, train_valid_split=True):
-        if train_valid_split == True:        
+        if train_valid_split:
             train = self.training_data.loc[:,atr]
             valid = self.validation_data.loc[:,atr]
             return train, valid
@@ -94,8 +97,8 @@ class DataHandler():
         else:
             return self.data_as_recordings
 
-
-    def get_values_as_numpy_arrays(self, values):
+    @staticmethod
+    def get_values_as_numpy_arrays(values):
         new_shape = values.shape + values[0].shape
         new_values = []
         for value in values:

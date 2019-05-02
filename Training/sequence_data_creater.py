@@ -1,42 +1,22 @@
 # Div
 import cv2
-import matplotlib.pyplot as plt
 import pandas as pd
 import os
-import warnings
-from sklearn.model_selection import train_test_split
 import numpy as np
-import scipy
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import OneHotEncoder
 import random
+from data_configuration import Config
+
+# TODO: REMOVE COLLUMNS NOT IN USE
 
 
-class SequenceCreater():
+class SequenceCreator:
     def __init__(self):
 
         self.data = None  # Contains all data
         self.data_as_recordings = []  # Contains all data divided into recordings
-        self.input_data = {
-            "Direction": True,
-            "Speed": False,
-            "SL": False,
-            "TL": False,
-        }
-        self.direction_categories = [
-            "RoadOption.VOID",
-            "RoadOption.LEFT",
-            "RoadOption.RIGHT",
-            "RoadOption.STRAIGHT",
-            "RoadOption.LANEFOLLOW",
-            "RoadOption.CHANGELANELEFT",
-            "RoadOption.CHANGELANERIGHT"
-        ]
-        self.tl_categories = [
-            "Green",
-            "Yellow",
-            "Red"
-        ]
+        self.conf = Config()
         self.bottom_crop = 115
         self.top_crop = 70
 
@@ -48,30 +28,28 @@ class SequenceCreater():
         # Fetch measurements
         self.fetch_measurments()
 
-        # Fix measurment data into correct format
+        # Fix measurement data into correct format
         # Then store to the dataframe
         store = pd.HDFStore("../Training_data/" + 'store.h5')
         for j, measurement_recording in enumerate(self.data_as_recordings):
 
-            # add field Frames and remove 1/3 of measurment with low steering
+            # add field Frames and remove 1/3 of measurement with low steering
             temp = self.convert_and_filter_input(measurement_recording, sequence_length=5)
 
-
             # Convert fields to one_hot_encoding
-            ohe_directions = self.get_one_hot_encoded(self.direction_categories, measurement_recording.Direction)
-            ohe_tl_state = self.get_one_hot_encoded(self.tl_categories, measurement_recording.TL_state)
+            ohe_directions = self.get_one_hot_encoded(self.conf.direction_categories, measurement_recording.Direction)
+            ohe_tl_state = self.get_one_hot_encoded(self.conf.tl_categories, measurement_recording.TL_state)
 
-
-            # Insert one_hot_encoding into the dataframe
-            if self.input_data["Direction"]:
+            # Insert one_hot_encoding into the data-frame
+            if self.conf.input_data["Direction"]:
                 for index, _ in temp.iterrows():
                     temp.at[index, "Direction"] = ohe_directions[index]
 
-            if self.input_data["TL"]:
+            if self.conf.input_data["TL_state"]:
                 for index, _ in temp.iterrows():
                     temp.at[index, "TL_state"] = ohe_tl_state[index]
 
-            if self.input_data["Speed"]:
+            if self.conf.input_data["Speed"]:
                 for index, _ in temp.iterrows():
                     speed = np.array([temp.loc[index, "Speed"]])
                     temp.at[index, "Speed"] = speed
@@ -111,9 +89,9 @@ class SequenceCreater():
 
                 for fr in frames:
                     # Add padding to frame number
-                    l = len(str(fr))
+                    frame_len = len(str(fr))
                     pad = ''
-                    for i in range(8 - l):
+                    for i in range(8 - frame_len):
                         pad += '0'
                     frame = str(fr)
 
@@ -177,4 +155,5 @@ class SequenceCreater():
         new_df["frame"] = new_df["frame"].astype(int)
         return new_df
 
-SequenceCreater()
+
+SequenceCreator()

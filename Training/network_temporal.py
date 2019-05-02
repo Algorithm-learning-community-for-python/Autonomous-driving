@@ -4,7 +4,9 @@ from keras.layers.core import Dense, Activation, Flatten, Lambda,Dropout
 from keras.layers.convolutional import Conv2D, Cropping2D
 from keras.layers.pooling import MaxPooling2D
 from keras.layers.normalization import BatchNormalization
-from keras.layers import Input, concatenate
+from keras.layers import Input, concatenate, LSTM
+
+# TODO: Insert timedistributed wrapper
 
 class NetworkHandler():
     def __init__(self):
@@ -14,58 +16,62 @@ class NetworkHandler():
         self.activation_layers = 0
         self.dropout_layers = 0
         self.dense_layers = 0
+        self.lstm_layers = 0
         self.model = None
 
     def conv_block(self, x, filters, kernel_size, stride, padding='SAME'):
-        #print("CREATE CONV BLOCK WITH INPUT:")
-        #print(x)
         x = self.conv(x, filters, kernel_size, stride, padding)
-        #print("ADDED conv")
-        #print(x)
-
         x = self.batch_norm(x)
-        #print("ADDED batch_norm")
-        #print(x)
         x = self.dropout(x, rate=0.0)
-        #print("ADDED dropout")
-        #print(x)
         x = self.activation(x)
         return x
 
-
     def conv(self, x, filters, kernel_size, stride, padding='same'):
         self.conv_layers += 1
-        x = Conv2D(filters=filters, kernel_size=kernel_size, strides=stride, padding=padding,  name="conv_"+str(self.conv_layers))(x)
+        x = Conv2D(
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=stride,
+            padding=padding,
+            name="conv_" + str(self.conv_layers))(x)
         return x
 
-    def max_pool(self, x, pool_size=(2,2)):
+    def max_pool(self, x, pool_size=(2, 2)):
         self.pool_layers += 1
         x = MaxPooling2D(pool_size=pool_size, name="max_pool_" + str(self.conv_layers))(x)
         return x
 
     def batch_norm(self, x, chanDim=-1):
-        #after a Conv2D layer with data_format="channels_first", set axis=1 in BatchNormalization
+        # after a Conv2D layer with data_format="channels_first", set axis=1 in BatchNormalization
         self.batch_norm_layers += 1
         x = BatchNormalization(axis=chanDim, name="batch_norm_" + str(self.batch_norm_layers))(x)
         return x
 
-    def activation(self, x, function="relu"):
+    def activation(self, x, activation_function="relu"):
         self.activation_layers += 1
-        x = Activation(function, name="activation_" + str(self.activation_layers))(x)
+        x = Activation(activation_function, name="activation_" + str(self.activation_layers))(x)
         return x
+
     def dropout(self, x, rate=0.0):
         self.dropout_layers += 1
         x = Dropout(rate, name="dropout_" + str(self.dropout_layers))(x)
         return x
 
-    def dense(self, x, output_size, function=None):
+    def dense(self, x, output_size, activation_function=None):
         self.dense_layers += 1
-        x = Dense(output_size, activation=function)(x)
+        x = Dense(output_size, activation=activation_function)(x)
         return x
+
+    def lstm(self, x, output_size, return_sequences=False):
+        self.lstm_layers += 1
+        x = LSTM(output_size, return_sequences=return_sequences)(x)
+        return x
+
 
 def hsv_convert(x):
     import tensorflow as tf
     return tf.image.rgb_to_hsv(x)  
+
 
 def load_network(input_size_data, input_data):
     inputs = []
@@ -77,7 +83,6 @@ def load_network(input_size_data, input_data):
     x = Lambda(hsv_convert)(x)
 
     # CONV 1
-    #x = net.conv_block(x, filters=32, kernel_size=5, stride=2, padding='VALID')
     x = net.conv_block(x, 32, 5, 2, padding='VALID')
     print(x)
 
@@ -122,7 +127,7 @@ def load_network(input_size_data, input_data):
     x = net.dense(x, 512)
     x = net.dropout(x, 0.3)
 
-    #######     INPUT DATA     #######
+    # ######     INPUT DATA     ###### #
 
     # SPEED
     if input_data["Speed"]:
@@ -135,7 +140,7 @@ def load_network(input_size_data, input_data):
         # Fully connected 2
         speed = net.dense(speed, 128)
         speed = net.dropout(speed, 0.5)
-        #Concatinate
+        # Concatenate
         x = concatenate([x, speed], 1)
 
     # DIRECTION
@@ -148,13 +153,12 @@ def load_network(input_size_data, input_data):
         # Fully connected 2
         direction = net.dense(direction, 32)
         direction = net.dropout(direction, 0.5)
-        #Concatinate
+        # Concatenate
         x = concatenate([x, direction], 1)
 
-
     # Traffic Light
-    if input_data["TL"]:
-        tl = Input(input_size_data["TL"], name="input_traffic_light")
+    if input_data["TL_state"]:
+        tl = Input(input_size_data["TL_state"], name="input_traffic_light")
         inputs.append(tl)
         # Fully connected 1
         tl = net.dense(tl, 128)
@@ -162,12 +166,12 @@ def load_network(input_size_data, input_data):
         # Fully connected 2
         tl = net.dense(tl, 128)
         tl = net.dropout(tl, 0.5)
-        #Concatinate
+        # Concatenate
         x = concatenate([x, tl], 1)
 
     # Speed limit
-    if input_data["SL"]:
-        speed_limit = Input(input_size_data["SL"], name="input_speed_limit")
+    if input_data["speed_limit"]:
+        speed_limit = Input(input_size_data["speed_limit"], name="input_speed_limit")
         inputs.append(speed_limit)
         # Fully connected 1
         speed_limit = net.dense(speed_limit, 128)
@@ -175,11 +179,10 @@ def load_network(input_size_data, input_data):
         # Fully connected 2
         speed_limit = net.dense(speed_limit, 128)
         speed_limit = net.dropout(speed_limit, 0.5)
-        #Concatinate
+        # Concatenate
         x = concatenate([x, speed_limit], 1)
 
-
-    x = net.dense(x, 512)
+    x = net.lstm(x, 512)
     x = net.dropout(x, 0.5)
 
     x = net.dense(x, 128)
