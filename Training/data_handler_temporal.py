@@ -99,6 +99,8 @@ class DataHandler:
 
     @staticmethod
     def get_values_as_numpy_arrays(values):
+        print(values)
+        print(values.shape)
         new_shape = values.shape + values[0].shape
         new_values = []
         for value in values:

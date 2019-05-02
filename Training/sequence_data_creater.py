@@ -27,11 +27,11 @@ class SequenceCreator:
     def fetch_data(self):
         # Fetch measurements
         self.fetch_measurments()
-
+        
         # Fix measurement data into correct format
         # Then store to the dataframe
         store = pd.HDFStore("../Training_data/" + 'store.h5')
-        for j, measurement_recording in enumerate(self.data_as_recordings):
+        for j, (path, measurement_recording) in enumerate(zip(self.data_paths, self.data_as_recordings)):
 
             # add field Frames and remove 1/3 of measurement with low steering
             temp = self.convert_and_filter_input(measurement_recording, sequence_length=5)
@@ -53,8 +53,8 @@ class SequenceCreator:
                 for index, _ in temp.iterrows():
                     speed = np.array([temp.loc[index, "Speed"]])
                     temp.at[index, "Speed"] = speed
-
-            store[str(j)] = temp
+                
+            store[path] = temp
             self.data_as_recordings[j] = temp
 
         store.close()
@@ -63,14 +63,15 @@ class SequenceCreator:
 
     def fetch_measurments(self):
         measurements_path = "/Measurments/recording.csv"
-        data_paths = []
+        self.data_paths = []
 
         for folder in os.listdir('../Training_data'):
             if folder == ".DS_Store" or folder == "store.h5":
                 continue
-            data_paths.append("../Training_data/" + folder)
-        self.data_paths = data_paths
-        for path in data_paths:
+            self.data_paths.append("../Training_data/" + folder)
+        self.data_paths.sort(key=lambda a : int(a.split("/")[-1]))
+        
+        for path in self.data_paths:
             measurement_recording = pd.read_csv(path + measurements_path)
             self.data_as_recordings.append(measurement_recording)
 
