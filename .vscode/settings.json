@@ -3,5 +3,7 @@
     "files.watcherExclude": {
         "**/Training_data/**": true,
 
-    }
+    },
+    "python.linting.pylintArgs": ["--extension-pkg-whitelist=cv2"]
+    
 }

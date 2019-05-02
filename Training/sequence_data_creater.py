@@ -9,7 +9,7 @@ import random
 from data_configuration import Config
 
 # TODO: REMOVE COLLUMNS NOT IN USE
-
+# TODO: ADD SUPPORT FOR OTHER INPUTS
 
 class SequenceCreator:
     def __init__(self):
@@ -17,8 +17,9 @@ class SequenceCreator:
         self.data = None  # Contains all data
         self.data_as_recordings = []  # Contains all data divided into recordings
         self.conf = Config()
-        self.bottom_crop = 115
-        self.top_crop = 70
+
+        self.bottom_crop = self.conf.bottom_crop
+        self.top_crop = self.conf.top_crop
 
         self.data_paths = None
 
@@ -27,7 +28,7 @@ class SequenceCreator:
     def fetch_data(self):
         # Fetch measurements
         self.fetch_measurments()
-        
+
         # Fix measurement data into correct format
         # Then store to the dataframe
         store = pd.HDFStore("../Training_data/" + 'store.h5')
@@ -37,12 +38,21 @@ class SequenceCreator:
             temp = self.convert_and_filter_input(measurement_recording, sequence_length=5)
 
             # Convert fields to one_hot_encoding
-            ohe_directions = self.get_one_hot_encoded(self.conf.direction_categories, measurement_recording.Direction)
-            ohe_tl_state = self.get_one_hot_encoded(self.conf.tl_categories, measurement_recording.TL_state)
+            ohe_directions = self.get_one_hot_encoded(
+                self.conf.direction_categories,
+                measurement_recording.Direction
+            )
+            ohe_tl_state = self.get_one_hot_encoded(
+                self.conf.tl_categories,
+                measurement_recording.TL_state
+            )
 
             # Insert one_hot_encoding into the data-frame
             if self.conf.input_data["Direction"]:
                 for index, _ in temp.iterrows():
+                    print(index)
+                    print(temp.loc[index, "Direction"])
+                    print(ohe_directions[index])
                     temp.at[index, "Direction"] = ohe_directions[index]
 
             if self.conf.input_data["TL_state"]:
@@ -53,7 +63,7 @@ class SequenceCreator:
                 for index, _ in temp.iterrows():
                     speed = np.array([temp.loc[index, "Speed"]])
                     temp.at[index, "Speed"] = speed
-                
+
             store[path] = temp
             self.data_as_recordings[j] = temp
 
@@ -83,18 +93,18 @@ class SequenceCreator:
             except OSError as err:
                 print("Failed to create path, " + err.strerror)
 
-            for index, row in measurment_recording.iterrows():
+            for _, row in measurment_recording.iterrows():
                 temp_images = []
                 frames = row["Frames"]
                 cur_frame = row["frame"]
 
-                for fr in frames:
+                for f in frames:
                     # Add padding to frame number
-                    frame_len = len(str(fr))
+                    frame_len = len(str(f))
                     pad = ''
-                    for i in range(8 - frame_len):
+                    for _ in range(8 - frame_len):
                         pad += '0'
-                    frame = str(fr)
+                    frame = str(f)
 
                     # Fetch image
                     file_path = self.data_paths[j] + image_path + pad + frame + '.png'
@@ -112,8 +122,10 @@ class SequenceCreator:
                     temp_images.append(img)
                 np.save(self.data_paths[j] + "/Sequences/" + str(cur_frame), np.array(temp_images))
 
+
     @staticmethod
     def get_one_hot_encoded(categories, values):
+        """ Returns one hot encoding of categories based on values"""
         # FIT to categories
         label_encoder = LabelEncoder()
         label_encoder.fit(categories)
@@ -127,30 +139,42 @@ class SequenceCreator:
         onehot_encoded = onehot_encoder.transform(integer_encoded)
         return onehot_encoded
 
-    @staticmethod
-    def convert_and_filter_input(df, sequence_length=5):
+    def convert_and_filter_input(self, dataframe, sequence_length=5):
+        """Filters away all features that shouldn't be used and convert"""
         new_df = pd.DataFrame()
-        for index, row in df.iterrows():
+        for index, row in dataframe.iterrows():
             if index < sequence_length - 1:
                 continue
             else:
-                temp_df = df.iloc[index - sequence_length + 1: index + 1, :]
+                temp_df = dataframe.iloc[index - sequence_length + 1: index + 1, :]
 
                 temp_steer = temp_df.loc[:, "Steer"].values
                 temp_dir = temp_df.loc[:, "Direction"].values
+
+                # Add or remove the current sequence
                 follow_lane = True
                 for direction in temp_dir:
                     if direction != "RoadOption.LANEFOLLOW":
                         follow_lane = False
-
-                # Add or remove the current sequence
                 s = sum(np.power(temp_steer, 2))
                 if follow_lane and s < (float(sequence_length) / 500) and random.randint(0, 10) > 3:
                     continue
                 else:
+                    # One hot encode all directions
+                    temp_dirs = []
+                    for direction in temp_dir:
 
+                        ohe_directions = self.get_one_hot_encoded(
+                            self.conf.direction_categories,
+                            [direction]
+                        )
+                        temp_dirs.append(ohe_directions)
+                        if direction != "RoadOption.LANEFOLLOW":
+                            print(direction)
+                            print(temp_dirs)
                     new_row = row
                     new_row.at["Frames"] = temp_df.loc[:, "frame"].values.astype(int)
+                    new_row.at["Directions"] = temp_dirs
                     new_df = new_df.append(new_row, ignore_index=True)
 
         new_df["frame"] = new_df["frame"].astype(int)

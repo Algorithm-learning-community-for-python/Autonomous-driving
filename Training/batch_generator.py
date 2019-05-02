@@ -17,14 +17,25 @@ class KerasBatchGenerator(object):
 
         self.data = None
         self.data_paths = []
+
         self.folder_index = -1 #Adds before fetching
         self.store = pd.HDFStore("../Training_data/store.h5")
         self.measures = []
         for key in self.conf.available_columns:
             if self.conf.input_data[key]:
                 self.measures.append(key)
+        self.measures.append("Directions")    
+        
         self.fetch_folders()
         self.get_new_measurments_recording()
+
+    def get_number_of_steps_per_epoch(self):
+        """Returns total number of samples"""
+        number_of_samples = 0
+        for path in self.data_paths:
+            recording = self.store[path]
+            number_of_samples += len(recording.index)
+        return number_of_samples
 
     # Fetch the folders available
     def fetch_folders(self):
@@ -32,7 +43,7 @@ class KerasBatchGenerator(object):
             if folder == ".DS_Store" or folder == "store.h5":
                 continue
             self.data_paths.append("../Training_data/" + folder)
-        self.data_paths.sort(key=lambda a : int(a.split("/")[-1]))
+        self.data_paths.sort(key=lambda a: int(a.split("/")[-1]))
 
     # Add measurments from the next recording
     def get_new_measurments_recording(self):

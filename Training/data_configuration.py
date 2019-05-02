@@ -4,8 +4,14 @@ from keras.optimizers import Adam
 
 class TrainConf:
     def __init__(self, **entries):
-        self.__dict__.update(entries)
+        self.loss = None
+        self.batch_size = None
+        self.lr = 0
+        self.optimizer = None
+        self.metrics = None
+        self.epochs = 0
 
+        self.__dict__.update(entries)
 
 class Config:
     def __init__(self):
@@ -80,3 +86,5 @@ class Config:
         }
         self.train_conf = TrainConf(**args)
         self.train_valid_split = 0.2
+        self.bottom_crop = 115
+        self.top_crop = 70

@@ -5,24 +5,33 @@ from data_handler_temporal import DataHandler
 from network_temporal import load_network
 from visualizer import Visualizer
 from data_configuration import Config
-from sequence_data_creater import SequenceCreator
-from batch_generator import KerasBatchGenerator
 
 class Trainer:
     def __init__(self):
         self.conf = Config()
 
+        self.atrX = ["Direction", "Image"]
+        self.atrY = ["Steer"]
+
         self.network_handler = None
         self.history = None
         self.model = None
-        self.generator = KerasBatchGenerator(self.conf.train_conf.batch_size)
         self.visualizer = Visualizer()
 
-        create_sequence_data = False
-        if create_sequence_data:
-            SequenceCreator()
 
+        self.data_handler = None
+        self.init_data_handler()
         # self.init_network()
+
+    def init_data_handler(self):
+        # Sets Data, dataX and dataY
+        self.data_handler = DataHandler(atrX=self.atrX, atrY=self.atrY, train_valid_split=self.conf.train_valid_split)
+        # Set dataX, dataY
+        self.data_handler.set_XY_data(self.atrX, self.atrY, train_valid_split=False)
+        # Set training_data, validation_data,
+        self.data_handler.set_train_valid_split(self.conf.train_valid_split)
+        # TrainX,TrainY, ValidX,ValidY
+        self.data_handler.set_XY_data(self.atrX, self.atrY, train_valid_split=True)
 
     def init_network(self):
         self.network_handler = load_network(self.conf.input_size_data, self.conf.input_data)
@@ -30,17 +39,34 @@ class Trainer:
 
     def train(self):
         self.model = self.network_handler.model
+        
+        train_dir = self.data_handler.trainX.Direction.values
+        train_dir = self.data_handler.get_values_as_numpy_arrays(train_dir)
 
+        valid_dir = self.data_handler.validX.Direction.values
+        valid_dir = self.data_handler.get_values_as_numpy_arrays(valid_dir)
+
+        train_img = self.data_handler.trainX.Image.values
+        train_img = self.data_handler.get_values_as_numpy_arrays(train_img)
+
+        valid_img = self.data_handler.validX.Image.values
+        valid_img = self.data_handler.get_values_as_numpy_arrays(valid_img)
+
+        train_y = self.data_handler.trainY.values
+        valid_y = self.data_handler.validY.values
+        
         self.model.compile(
             loss=self.conf.train_conf.loss,
             optimizer=self.conf.train_conf.optimizer,
             metrics=self.conf.train_conf.metrics
         )
 
-        self.history = self.model.fit_generator(
-            self.generator.generate(),
-            steps_per_epoch = self.generator.get_number_of_steps_per_epoch(),
-            epochs=self.conf.train_conf.epochs
+        self.history = self.model.fit(
+            [train_img, train_dir],
+            train_y,
+            validation_data=([valid_img, valid_dir], valid_y),
+            epochs=self.conf.train_conf.epochs,
+            batch_size=self.conf.train_conf.batch_size
         )
 
         self.model.save('model.h5')

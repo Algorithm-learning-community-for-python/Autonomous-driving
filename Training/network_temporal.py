@@ -5,7 +5,7 @@ from keras.layers.convolutional import Conv2D, Cropping2D
 from keras.layers.pooling import MaxPooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.layers import Input, concatenate, LSTM
-
+from keras.layers import TimeDistributed
 # TODO: Insert timedistributed wrapper
 
 class NetworkHandler():
@@ -28,38 +28,38 @@ class NetworkHandler():
 
     def conv(self, x, filters, kernel_size, stride, padding='same'):
         self.conv_layers += 1
-        x = Conv2D(
+        x = TimeDistributed(Conv2D(
             filters=filters,
             kernel_size=kernel_size,
             strides=stride,
             padding=padding,
-            name="conv_" + str(self.conv_layers))(x)
+            name="conv_" + str(self.conv_layers)))(x)
         return x
 
     def max_pool(self, x, pool_size=(2, 2)):
         self.pool_layers += 1
-        x = MaxPooling2D(pool_size=pool_size, name="max_pool_" + str(self.conv_layers))(x)
+        x = TimeDistributed(MaxPooling2D(pool_size=pool_size, name="max_pool_" + str(self.conv_layers)))(x)
         return x
 
     def batch_norm(self, x, chanDim=-1):
         # after a Conv2D layer with data_format="channels_first", set axis=1 in BatchNormalization
         self.batch_norm_layers += 1
-        x = BatchNormalization(axis=chanDim, name="batch_norm_" + str(self.batch_norm_layers))(x)
+        x = TimeDistributed(BatchNormalization(axis=chanDim, name="batch_norm_" + str(self.batch_norm_layers)))(x)
         return x
 
     def activation(self, x, activation_function="relu"):
         self.activation_layers += 1
-        x = Activation(activation_function, name="activation_" + str(self.activation_layers))(x)
+        x = TimeDistributed(Activation(activation_function, name="activation_" + str(self.activation_layers)))(x)
         return x
 
     def dropout(self, x, rate=0.0):
         self.dropout_layers += 1
-        x = Dropout(rate, name="dropout_" + str(self.dropout_layers))(x)
+        x = TimeDistributed(Dropout(rate, name="dropout_" + str(self.dropout_layers)))(x)
         return x
 
     def dense(self, x, output_size, activation_function=None):
         self.dense_layers += 1
-        x = Dense(output_size, activation=activation_function)(x)
+        x = TimeDistributed(Dense(output_size, activation=activation_function))(x)
         return x
 
     def lstm(self, x, output_size, return_sequences=False):
@@ -80,7 +80,7 @@ def load_network(input_size_data, input_data):
     net = NetworkHandler()
 
     # RGB TO HSV
-    x = Lambda(hsv_convert)(x)
+    x = TimeDistributed(Lambda(hsv_convert))(x)
 
     # CONV 1
     x = net.conv_block(x, 32, 5, 2, padding='VALID')
@@ -115,7 +115,7 @@ def load_network(input_size_data, input_data):
     print(x)
 
     # FLATTEN
-    x = Flatten()(x)
+    x = TimeDistributed(Flatten())(x)
     print(x)
 
     # Fully connected 1
@@ -185,7 +185,7 @@ def load_network(input_size_data, input_data):
     x = net.lstm(x, 512)
     x = net.dropout(x, 0.5)
 
-    x = net.dense(x, 128)
+    x = net.lstm(x, 128)
     x = net.dropout(x, 0.5)
 
     x = net.dense(x, 32)
