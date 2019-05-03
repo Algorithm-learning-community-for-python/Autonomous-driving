@@ -1,7 +1,5 @@
-
 from batch_generator import KerasBatchGenerator
-
-"""
+import numpy as np
 generator = KerasBatchGenerator(4)
 g = generator.generate()
 for n in g:
@@ -9,18 +7,23 @@ for n in g:
     print("Progress:")
     print(generator.current_idx)
     print(generator.folder_index)
+    #print(n)
+    #print(n)
     bx = n[0]
     by = n[1]
-
-    sx = bx[0]
+    print(bx)
+    print(len(bx))
+    sx = bx["input_1"]
+    print(sx.shape)
+"""
     sy = by[0]
-    sequence = sx[0]
-    direction = sx[1]
-    directions = sx[2]
-    if direction[2] == 1:
-        print(sequence.shape)
-        print(directions)
-    #print(sy)
+    for sx in bx:
+        sequence = sx[0]
+        direction = sx[1]
+        directions = sx[2]
+        #if direction[2] != 1:
+            #print(direction)
+"""
 """
 
 from data_configuration import Config
@@ -52,3 +55,5 @@ ohe = get_one_hot_encoded(c.direction_categories, ["RoadOption.CHANGELANELEFT"])
 print(ohe)
 ohe = get_one_hot_encoded(c.direction_categories, ["RoadOption.CHANGELANERIGHT"])
 print(ohe)
+
+"""

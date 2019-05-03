@@ -35,36 +35,37 @@ class SequenceCreator:
         for j, (path, measurement_recording) in enumerate(zip(self.data_paths, self.data_as_recordings)):
 
             # add field Frames and remove 1/3 of measurement with low steering
-            temp = self.convert_and_filter_input(measurement_recording, sequence_length=5)
+            temp = self.convert_and_filter_input(measurement_recording, self.conf.input_size_data["Sequence_length"])
 
             # Convert fields to one_hot_encoding
             ohe_directions = self.get_one_hot_encoded(
                 self.conf.direction_categories,
-                measurement_recording.Direction
+                temp.Direction
             )
             ohe_tl_state = self.get_one_hot_encoded(
                 self.conf.tl_categories,
-                measurement_recording.TL_state
+                temp.TL_state
             )
 
             # Insert one_hot_encoding into the data-frame
             if self.conf.input_data["Direction"]:
                 for index, _ in temp.iterrows():
-                    print(index)
-                    print(temp.loc[index, "Direction"])
-                    print(ohe_directions[index])
+                    #if temp.loc[index, "Direction"] != "RoadOption.LANEFOLLOW":
+                        #print(ohe_directions[index])
                     temp.at[index, "Direction"] = ohe_directions[index]
 
             if self.conf.input_data["TL_state"]:
                 for index, _ in temp.iterrows():
+                    print()
                     temp.at[index, "TL_state"] = ohe_tl_state[index]
 
             if self.conf.input_data["Speed"]:
                 for index, _ in temp.iterrows():
                     speed = np.array([temp.loc[index, "Speed"]])
                     temp.at[index, "Speed"] = speed
-
-            store[path] = temp
+            new_path = "Recording_" + path.split("/")[-1]
+            print(new_path + " stored")
+            store[new_path] = temp
             self.data_as_recordings[j] = temp
 
         store.close()
@@ -91,7 +92,7 @@ class SequenceCreator:
             try:
                 os.mkdir(self.data_paths[j] + "/Sequences")
             except OSError as err:
-                print("Failed to create path, " + err.strerror)
+                print("Failed to create folder: " + self.data_paths[j] + "/Sequences" + ". " + err.strerror)
 
             for _, row in measurment_recording.iterrows():
                 temp_images = []
@@ -139,7 +140,7 @@ class SequenceCreator:
         onehot_encoded = onehot_encoder.transform(integer_encoded)
         return onehot_encoded
 
-    def convert_and_filter_input(self, dataframe, sequence_length=5):
+    def convert_and_filter_input(self, dataframe, sequence_length):
         """Filters away all features that shouldn't be used and convert"""
         new_df = pd.DataFrame()
         for index, row in dataframe.iterrows():
@@ -168,17 +169,18 @@ class SequenceCreator:
                             self.conf.direction_categories,
                             [direction]
                         )
-                        temp_dirs.append(ohe_directions)
-                        if direction != "RoadOption.LANEFOLLOW":
-                            print(direction)
-                            print(temp_dirs)
+                        temp_dirs.append(ohe_directions[0])
+
+                    # Add frames and directions too the new row
                     new_row = row
                     new_row.at["Frames"] = temp_df.loc[:, "frame"].values.astype(int)
                     new_row.at["Directions"] = temp_dirs
+                    
                     new_df = new_df.append(new_row, ignore_index=True)
 
         new_df["frame"] = new_df["frame"].astype(int)
+        #print(new_df.loc[new_df["Direction"] != "RoadOption.LANEFOLLOW", ["Direction", "Directions"]])
         return new_df
 
 
-SequenceCreator()
+#SequenceCreator()

@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from data_configuration import Config
 from data_handler_temporal import DataHandler
-
+from math import ceil
 # TODO: FINISH
 
 class KerasBatchGenerator(object):
@@ -19,12 +19,13 @@ class KerasBatchGenerator(object):
         self.data_paths = []
 
         self.folder_index = -1 #Adds before fetching
-        self.store = pd.HDFStore("../Training_data/store.h5")
         self.measures = []
         for key in self.conf.available_columns:
             if self.conf.input_data[key]:
-                self.measures.append(key)
-        self.measures.append("Directions")    
+                if key == "Direction":
+                    self.measures.append("Directions")
+                else:
+                    self.measures.append(key)
         
         self.fetch_folders()
         self.get_new_measurments_recording()
@@ -32,10 +33,15 @@ class KerasBatchGenerator(object):
     def get_number_of_steps_per_epoch(self):
         """Returns total number of samples"""
         number_of_samples = 0
+        self.store = pd.HDFStore("../Training_data/store.h5")
+
         for path in self.data_paths:
-            recording = self.store[path]
+            df_name = "Recording_" + path.split("/")[-1]
+            recording = self.store[df_name]
             number_of_samples += len(recording.index)
-        return number_of_samples
+        
+        self.store.close()
+        return ceil(number_of_samples / self.conf.train_conf.batch_size)
 
     # Fetch the folders available
     def fetch_folders(self):
@@ -47,10 +53,14 @@ class KerasBatchGenerator(object):
 
     # Add measurments from the next recording
     def get_new_measurments_recording(self):
+        self.store = pd.HDFStore("../Training_data/store.h5")
+
         self.folder_index += 1
         if self.folder_index >= len(self.data_paths):
             self.folder_index = 0
-        self.data = self.store[self.data_paths[self.folder_index]]
+        df_name = "Recording_" + self.data_paths[self.folder_index].split("/")[-1]
+        self.data = self.store[df_name]
+        self.store.close()
         self.add_image_sequences()
 
     # Fetch image sequences for the current recording
@@ -61,12 +71,11 @@ class KerasBatchGenerator(object):
             sequence = np.load(self.data_paths[self.folder_index] + "/Sequences/" + str(cur_frame) + ".npy")
             self.data.at[index, "Sequence"] = np.array(sequence)
 
-
     def generate(self):
-        x = []
-        y = np.zeros((self.batch_size, self.conf.input_size_data["Output"] ))
         while True:
-            for i in range(self.batch_size):
+            x = [[],[]]
+            y = [] #np.zeros((self.batch_size, self.conf.input_size_data["Output"] ))
+            for _ in range(self.batch_size):
                 if self.current_idx + 1 >= len(self.data.index):
                     # reset the index back to the start of the data set
                     self.current_idx = 0
@@ -74,25 +83,33 @@ class KerasBatchGenerator(object):
             
                 sequence = self.get_sequence()
                 measurements = self.get_measurements()
-                x.append(self.reshape_input(sequence, measurements))
-                y[i, :] = self.get_output()
+                x[0].append(sequence)
+                x[1].append(measurements["Directions"])
+                #x.append(self.reshape_input(sequence, measurements))
+                y.append(self.get_output())
                 self.current_idx += 1
-            yield x, y
+            yield {"input_1": np.array(x[0]), "input_2": np.array(x[1])}, {"output": np.array(y)}
 
     def get_sequence(self):
         return self.data.loc[self.current_idx, "Sequence"]
 
     # TODO: Add preprosessing if necesarry   
-    def get_measurements(self):        
+    def get_measurements(self):     
         return self.data.loc[self.current_idx, self.measures]
 
     # TODO: Verify that input comes in the right order
     def reshape_input(self, sequence, measurements):
+        x = {}
+        x["input_1"] = sequence
+        x["input_2"] = measurements["Directions"]
+        return x
+        """
         x = []
-        x.append(sequence)
+        x.append(np.array(sequence))
         for col in measurements:
             x.append(col)
         return x
+        """
 
     def get_output(self):
         return self.data.loc[self.current_idx, "Steer"]

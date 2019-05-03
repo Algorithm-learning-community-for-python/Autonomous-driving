@@ -67,22 +67,23 @@ class Config:
         ]
 
         self.input_size_data = {
-            "Image": [140, 320, 3],
+            "Image": [170, 320, 3],
             "Direction": [7],
             "Speed": [1],
             "speed_limit": [1],
             "TL_state": [3],
             "Output": 1,
+            "Sequence_length": 5,
         }
 
         lr = 0.0001
         args = {
             "loss": "mse",
-            "optimizer": Adam(lr),
+            "optimizer": "rmsprop", #Adam(lr),
             "lr": lr,
             "metrics": None,
-            "epochs": 2,
-            "batch_size": 32,
+            "epochs": 20,
+            "batch_size": 8,
         }
         self.train_conf = TrainConf(**args)
         self.train_valid_split = 0.2

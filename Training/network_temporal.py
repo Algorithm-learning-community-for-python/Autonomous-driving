@@ -52,14 +52,20 @@ class NetworkHandler():
         x = TimeDistributed(Activation(activation_function, name="activation_" + str(self.activation_layers)))(x)
         return x
 
-    def dropout(self, x, rate=0.0):
+    def dropout(self, x, rate=0.0, td=True):
         self.dropout_layers += 1
-        x = TimeDistributed(Dropout(rate, name="dropout_" + str(self.dropout_layers)))(x)
+        if not td:
+            x = Dropout(rate, name="dropout_" + str(self.dropout_layers))(x)
+        else:
+            x = TimeDistributed(Dropout(rate, name="dropout_" + str(self.dropout_layers)))(x)
         return x
 
-    def dense(self, x, output_size, activation_function=None):
+    def dense(self, x, output_size, td=True, activation_function=None, name=None):
         self.dense_layers += 1
-        x = TimeDistributed(Dense(output_size, activation=activation_function))(x)
+        if not td:
+            x = Dense(output_size, activation=activation_function)(x)
+        else:
+            x = TimeDistributed(Dense(output_size, activation=activation_function), name=name)(x)
         return x
 
     def lstm(self, x, output_size, return_sequences=False):
@@ -75,7 +81,7 @@ def hsv_convert(x):
 
 def load_network(input_size_data, input_data):
     inputs = []
-    x = Input(shape=input_size_data["Image"], name="input_images")
+    x = Input(shape=[input_size_data["Sequence_length"]] + input_size_data["Image"], name="input_1")
     inputs.append(x)
     net = NetworkHandler()
 
@@ -115,16 +121,16 @@ def load_network(input_size_data, input_data):
     print(x)
 
     # FLATTEN
-    x = TimeDistributed(Flatten())(x)
+    x = TimeDistributed(Flatten(), name="time_flatten")(x)
     print(x)
 
     # Fully connected 1
-    x = net.dense(x, 512)
+    x = net.dense(x, 512, name="time_FC1")
     x = net.dropout(x, 0.3)
     print(x)
 
     # Fully connected 2
-    x = net.dense(x, 512)
+    x = net.dense(x, 512, name="time_FC2")
     x = net.dropout(x, 0.3)
 
     # ######     INPUT DATA     ###### #
@@ -145,7 +151,8 @@ def load_network(input_size_data, input_data):
 
     # DIRECTION
     if input_data["Direction"]:
-        direction = Input(input_size_data["Direction"], name="input_direction")
+        size = [input_size_data["Sequence_length"]] + input_size_data["Direction"]
+        direction = Input(size, name="input_2")
         inputs.append(direction)
         # Fully connected 1
         direction = net.dense(direction, 32)
@@ -154,7 +161,7 @@ def load_network(input_size_data, input_data):
         direction = net.dense(direction, 32)
         direction = net.dropout(direction, 0.5)
         # Concatenate
-        x = concatenate([x, direction], 1)
+        x = concatenate([x, direction])
 
     # Traffic Light
     if input_data["TL_state"]:
@@ -182,14 +189,12 @@ def load_network(input_size_data, input_data):
         # Concatenate
         x = concatenate([x, speed_limit], 1)
 
-    x = net.lstm(x, 512)
-    x = net.dropout(x, 0.5)
+    x = net.lstm(x, 128, return_sequences=False)
+    #x = net.dropout(x, 0.5)
 
-    x = net.lstm(x, 128)
-    x = net.dropout(x, 0.5)
-
-    x = net.dense(x, 32)
-    x = net.dense(x, input_size_data["Output"])
+    x = net.dense(x, 32, td = False)
+    x = Dense(input_size_data["Output"], name="output")(x)
+    #x = net.dense(x, input_size_data["Output"], td = False)
 
     net.model = Model(inputs=inputs, outputs=x)
 

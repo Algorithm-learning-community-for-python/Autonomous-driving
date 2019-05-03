@@ -16,17 +16,50 @@ class Trainer:
         self.history = None
         self.model = None
         self.generator = KerasBatchGenerator(self.conf.train_conf.batch_size)
-        self.visualizer = Visualizer()
+        #self.visualizer = Visualizer()
 
         create_sequence_data = False
         if create_sequence_data:
             SequenceCreator()
 
-        # self.init_network()
+        self.init_network()
 
     def init_network(self):
         self.network_handler = load_network(self.conf.input_size_data, self.conf.input_data)
         plot_model(self.network_handler.model, to_file="model.png")
+        print(self.network_handler.model.summary())
+        with open("model.txt", "w") as fh:
+            self.network_handler.model.summary(print_fn=lambda x: fh.write(x + "\n"))
+        fh.close()
+        print(self.get_model_memory_usage(self.conf.train_conf.batch_size, self.network_handler.model))
+        raw_input()
+
+    def get_model_memory_usage(self, batch_size, model):
+        import numpy as np
+        from keras import backend as K
+
+        shapes_mem_count = 0
+        for l in model.layers:
+            single_layer_mem = 1
+            for s in l.output_shape:
+                if s is None:
+                    continue
+                single_layer_mem *= s
+            shapes_mem_count += single_layer_mem
+
+        trainable_count = np.sum([K.count_params(p) for p in set(model.trainable_weights)])
+        non_trainable_count = np.sum([K.count_params(p) for p in set(model.non_trainable_weights)])
+
+        number_size = 4.0
+        if K.floatx() == 'float16':
+                number_size = 2.0
+        if K.floatx() == 'float64':
+                number_size = 8.0
+
+        total_memory = number_size*(batch_size*shapes_mem_count + trainable_count + non_trainable_count)
+        gbytes = np.round(total_memory / (1024.0 ** 3), 3)
+        return gbytes
+
 
     def train(self):
         self.model = self.network_handler.model
@@ -34,13 +67,16 @@ class Trainer:
         self.model.compile(
             loss=self.conf.train_conf.loss,
             optimizer=self.conf.train_conf.optimizer,
-            metrics=self.conf.train_conf.metrics
+            #metrics=self.conf.train_conf.metrics
         )
 
         self.history = self.model.fit_generator(
             self.generator.generate(),
             steps_per_epoch = self.generator.get_number_of_steps_per_epoch(),
-            epochs=self.conf.train_conf.epochs
+            epochs=self.conf.train_conf.epochs,
+            max_queue_size=1,
+            workers = 1,
+            pickle_safe=False
         )
 
         self.model.save('model.h5')
@@ -86,7 +122,7 @@ class Trainer:
 
 
 trainer = Trainer()
-trainer.data_handler.plot_data()
-# trainer.train()
+#trainer.data_handler.plot_data()
+trainer.train()
 # trainer.store_results()
 # trainer.plot_training_results()
