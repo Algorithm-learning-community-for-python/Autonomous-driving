@@ -83,7 +83,7 @@ class Config:
             "lr": lr,
             "metrics": None,
             "epochs": 20,
-            "batch_size": 8,
+            "batch_size": 3,
         }
         self.train_conf = TrainConf(**args)
         self.train_valid_split = 0.2

@@ -1,20 +1,25 @@
-from batch_generator import KerasBatchGenerator
+#pylint: disable=superfluous-parens
+
+
+from batch_generator import BatchGenerator
 import numpy as np
-generator = KerasBatchGenerator(4)
+generator = BatchGenerator()
 g = generator.generate()
 for n in g:
     #n = g.next()
     print("Progress:")
     print(generator.current_idx)
     print(generator.folder_index)
-    #print(n)
-    #print(n)
     bx = n[0]
     by = n[1]
-    print(bx)
-    print(len(bx))
-    sx = bx["input_1"]
-    print(sx.shape)
+    print("Inputs: ")
+    print("Images shape: " + str(bx["input_1"].shape))
+    print("Direction shape: " + str(bx["input_2"].shape))
+    print("Output shape: " + str(by["output"].shape))
+
+    print("Direction sample: " + str(bx["input_2"][0]))
+    print("Output sample: " + str(by["output"][0]))
+    raw_input()
 """
     sy = by[0]
     for sx in bx:

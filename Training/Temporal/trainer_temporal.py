@@ -5,68 +5,78 @@ from data_handler_temporal import DataHandler
 from network_temporal import load_network
 from visualizer import Visualizer
 from data_configuration import Config
+from sequence_data_creater import SequenceCreator
+from batch_generator import BatchGenerator
 
 class Trainer:
     def __init__(self):
         self.conf = Config()
 
-        self.atrX = ["Direction", "Image"]
-        self.atrY = ["Steer"]
-
         self.network_handler = None
         self.history = None
         self.model = None
-        self.visualizer = Visualizer()
+        self.generator = BatchGenerator()
+        #self.visualizer = Visualizer()
 
+        create_sequence_data = False
+        if create_sequence_data:
+            SequenceCreator()
 
-        self.data_handler = None
-        self.init_data_handler()
-        # self.init_network()
-
-    def init_data_handler(self):
-        # Sets Data, dataX and dataY
-        self.data_handler = DataHandler(atrX=self.atrX, atrY=self.atrY, train_valid_split=self.conf.train_valid_split)
-        # Set dataX, dataY
-        self.data_handler.set_XY_data(self.atrX, self.atrY, train_valid_split=False)
-        # Set training_data, validation_data,
-        self.data_handler.set_train_valid_split(self.conf.train_valid_split)
-        # TrainX,TrainY, ValidX,ValidY
-        self.data_handler.set_XY_data(self.atrX, self.atrY, train_valid_split=True)
+        self.init_network()
 
     def init_network(self):
         self.network_handler = load_network(self.conf.input_size_data, self.conf.input_data)
         plot_model(self.network_handler.model, to_file="model.png")
+        print(self.network_handler.model.summary())
+        with open("model.txt", "w") as fh:
+            self.network_handler.model.summary(print_fn=lambda x: fh.write(x + "\n"))
+        fh.close()
+        print(self.get_model_memory_usage(self.conf.train_conf.batch_size, self.network_handler.model))
+        raw_input()
+
+    def get_model_memory_usage(self, batch_size, model):
+        import numpy as np
+        from keras import backend as K
+
+        shapes_mem_count = 0
+        for l in model.layers:
+            single_layer_mem = 1
+            for s in l.output_shape:
+                if s is None:
+                    continue
+                single_layer_mem *= s
+            shapes_mem_count += single_layer_mem
+
+        trainable_count = np.sum([K.count_params(p) for p in set(model.trainable_weights)])
+        non_trainable_count = np.sum([K.count_params(p) for p in set(model.non_trainable_weights)])
+
+        number_size = 4.0
+        if K.floatx() == 'float16':
+                number_size = 2.0
+        if K.floatx() == 'float64':
+                number_size = 8.0
+
+        total_memory = number_size*(batch_size*shapes_mem_count + trainable_count + non_trainable_count)
+        gbytes = np.round(total_memory / (1024.0 ** 3), 3)
+        return gbytes
+
 
     def train(self):
         self.model = self.network_handler.model
-        
-        train_dir = self.data_handler.trainX.Direction.values
-        train_dir = self.data_handler.get_values_as_numpy_arrays(train_dir)
 
-        valid_dir = self.data_handler.validX.Direction.values
-        valid_dir = self.data_handler.get_values_as_numpy_arrays(valid_dir)
-
-        train_img = self.data_handler.trainX.Image.values
-        train_img = self.data_handler.get_values_as_numpy_arrays(train_img)
-
-        valid_img = self.data_handler.validX.Image.values
-        valid_img = self.data_handler.get_values_as_numpy_arrays(valid_img)
-
-        train_y = self.data_handler.trainY.values
-        valid_y = self.data_handler.validY.values
-        
         self.model.compile(
             loss=self.conf.train_conf.loss,
             optimizer=self.conf.train_conf.optimizer,
-            metrics=self.conf.train_conf.metrics
+            #metrics=self.conf.train_conf.metrics
         )
 
-        self.history = self.model.fit(
-            [train_img, train_dir],
-            train_y,
-            validation_data=([valid_img, valid_dir], valid_y),
+        self.history = self.model.fit_generator(
+            self.generator.generate(),
+            steps_per_epoch = self.generator.get_number_of_steps_per_epoch(),
             epochs=self.conf.train_conf.epochs,
-            batch_size=self.conf.train_conf.batch_size
+            max_queue_size=1,
+            workers = 1,
+            pickle_safe=False
         )
 
         self.model.save('model.h5')
@@ -112,7 +122,7 @@ class Trainer:
 
 
 trainer = Trainer()
-trainer.data_handler.plot_data()
-# trainer.train()
+#trainer.data_handler.plot_data()
+trainer.train()
 # trainer.store_results()
 # trainer.plot_training_results()
