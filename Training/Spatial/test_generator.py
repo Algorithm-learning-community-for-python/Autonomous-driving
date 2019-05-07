@@ -6,6 +6,7 @@ from Misc.data_configuration import Config
 conf = Config()
 generator = BatchGenerator(conf)
 g = generator.generate()
+
 for n in g:
     #n = g.next()
     print("Progress:")
@@ -15,6 +16,8 @@ for n in g:
     by = n[1]
     print("Inputs: ")
     print("Images shape: " + str(bx["input_1"].shape))
+    image = bx["input_1"][0]
+    print(image)
     print("Direction shape: " + str(bx["input_2"].shape))
     print("Output shape: " + str(by["output"].shape))
 

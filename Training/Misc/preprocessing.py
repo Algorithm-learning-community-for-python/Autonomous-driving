@@ -41,3 +41,11 @@ def filter_input_based_on_steering(dataframe, conf):
         else:
             new_df = new_df.append(row, ignore_index=True)
     return new_df
+
+def get_values_as_numpy_arrays(values):
+    new_shape = values.shape + values[0].shape
+    new_values = []
+    for value in values:
+        new_values.append(value)
+    
+    return np.array(new_values).reshape(new_shape)

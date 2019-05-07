@@ -1,3 +1,4 @@
+"""NETWORK HANDLER AND CREATER"""
 from keras.models import Model
 from keras.models import Sequential
 from keras.layers.core import Dense, Activation, Flatten, Lambda,Dropout
@@ -7,6 +8,7 @@ from keras.layers.normalization import BatchNormalization
 from keras.layers import Input, concatenate
 
 class NetworkHandler():
+    """ Class that holds the network in use"""
     def __init__(self):
         self.conv_layers = 0
         self.pool_layers = 0
@@ -67,9 +69,11 @@ def hsv_convert(x):
     import tensorflow as tf
     return tf.image.rgb_to_hsv(x)  
 
-def load_network(input_size_data, input_data):
+def load_network(conf):
+    """ Creates and returns a model using the class network handler """
+    input_size_data, input_data = conf.input_size_data, conf.input_data
     inputs = []
-    x = Input(shape=input_size_data["Image"], name="input_images")
+    x = Input(shape=input_size_data["Image"], name="input_1")
     inputs.append(x)
     net = NetworkHandler()
 
@@ -124,9 +128,23 @@ def load_network(input_size_data, input_data):
 
     #######     INPUT DATA     #######
 
+
+    # DIRECTION
+    if input_data["Direction"]:
+        direction = Input(input_size_data["Direction"], name="input_2")
+        inputs.append(direction)
+        # Fully connected 1
+        direction = net.dense(direction, 32)
+        direction = net.dropout(direction, 0.5)
+        # Fully connected 2
+        direction = net.dense(direction, 32)
+        direction = net.dropout(direction, 0.5)
+        #Concatinate
+        x = concatenate([x, direction], 1)
+
     # SPEED
     if input_data["Speed"]:
-        speed = Input(input_size_data["Speed"], name="input_speed")
+        speed = Input(input_size_data["Speed"], name="input_3")
         inputs.append(speed)
 
         # Fully connected 1
@@ -138,23 +156,9 @@ def load_network(input_size_data, input_data):
         #Concatinate
         x = concatenate([x, speed], 1)
 
-    # DIRECTION
-    if input_data["Direction"]:
-        direction = Input(input_size_data["Direction"], name="input_direction")
-        inputs.append(direction)
-        # Fully connected 1
-        direction = net.dense(direction, 32)
-        direction = net.dropout(direction, 0.5)
-        # Fully connected 2
-        direction = net.dense(direction, 32)
-        direction = net.dropout(direction, 0.5)
-        #Concatinate
-        x = concatenate([x, direction], 1)
-
-
     # Traffic Light
-    if input_data["TL"]:
-        tl = Input(input_size_data["TL"], name="input_traffic_light")
+    if input_data["TL_state"]:
+        tl = Input(input_size_data["TL_state"], name="input_traffic_light")
         inputs.append(tl)
         # Fully connected 1
         tl = net.dense(tl, 128)
@@ -166,8 +170,8 @@ def load_network(input_size_data, input_data):
         x = concatenate([x, tl], 1)
 
     # Speed limit
-    if input_data["SL"]:
-        speed_limit = Input(input_size_data["SL"], name="input_speed_limit")
+    if input_data["speed_limit"]:
+        speed_limit = Input(input_size_data["speed_limit"], name="input_speed_limit")
         inputs.append(speed_limit)
         # Fully connected 1
         speed_limit = net.dense(speed_limit, 128)
@@ -186,7 +190,7 @@ def load_network(input_size_data, input_data):
     x = net.dropout(x, 0.5)
 
     x = net.dense(x, 32)
-    x = net.dense(x, input_size_data["Output"])
+    x = Dense(input_size_data["Output"], name="output")(x)
 
     net.model = Model(inputs=inputs, outputs=x)
 

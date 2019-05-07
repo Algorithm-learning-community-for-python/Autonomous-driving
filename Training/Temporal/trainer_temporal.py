@@ -1,28 +1,23 @@
+"""Main module for Temporal training"""
+
 from Temporal.network_temporal import load_network
 from Temporal.sequence_data_creater import SequenceCreator
 from Temporal.batch_generator import BatchGenerator
-from Misc.data_configuration import Config
+from Temporal.data_configuration import Config
 from Misc.misc import save_results
 
 class Trainer(object):
     """ Main class for training a new model """
     def __init__(self):
         self.conf = Config()
-
-        self.network_handler = None
         self.history = None
-        self.generator = BatchGenerator()
-
         self.update_config()
-
+        self.generator = BatchGenerator(self.conf)
+        self.network_handler = load_network(self.conf)
 
         create_sequence_data = False
         if create_sequence_data:
             SequenceCreator(self.conf)
-
-
-        # Init network handler and its model
-        self.network_handler = load_network(self.conf)
 
     def update_config(self):
         """use this to update configuration when training several models"""
