@@ -1,12 +1,11 @@
 """ Used to list all folders"""
 import os
+from Misc.preprocessing import get_one_hot_encoded, filter_input_based_on_steering
+
 import cv2
 import pandas as pd
 import numpy as np
-import sys
-sys.path.append("../")
-from Misc.data_configuration import Config
-from Misc.preprocessing import get_one_hot_encoded
+
 class SequenceCreator(object):
     """
     Creates a file(store.h5) that contains all control signals.
@@ -15,11 +14,12 @@ class SequenceCreator(object):
     """
     #pylint: disable=superfluous-parens
 
-    def __init__(self):
+    def __init__(self, conf):
 
+        self.conf = conf
+        self.filter_input = conf.filter_input
         self.data = None  # Contains all data
         self.data_as_recordings = []  # Contains all data divided into recordings
-        self.conf = Config()
 
         self.bottom_crop = self.conf.bottom_crop
         self.top_crop = self.conf.top_crop
@@ -103,8 +103,11 @@ class SequenceCreator(object):
                     temp_images.append(img)
                 np.save(self.data_paths[j] + "/Sequences/" + str(cur_frame), np.array(temp_images))
 
-    def preprocess_measurements(self, dataframe):
+    def preprocess_measurements(self, df):
         """ preprocesses data before storing """
+        dataframe = df
+        if self.filter_input:
+            dataframe = filter_input_based_on_steering(dataframe, self.conf)
 
         # Insert one_hot_encodings into the data-frame and convert speed to numpy array??
         for index, row in dataframe.iterrows():
@@ -114,7 +117,6 @@ class SequenceCreator(object):
                     self.conf.direction_categories,
                     row.Direction
                 )
-                #print(ohe_directions)
                 dataframe.at[index, "Direction"] = ohe_directions
 
             # Convert TL_states to one_hot_encoding
@@ -158,6 +160,3 @@ class SequenceCreator(object):
 
         new_df["frame"] = new_df["frame"].astype(int)
         return new_df
-
-
-SequenceCreator()

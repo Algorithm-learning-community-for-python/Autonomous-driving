@@ -3,8 +3,6 @@ import os
 from math import ceil
 import pandas as pd
 import numpy as np
-import sys
-sys.path.append("../")
 from Misc.data_configuration import Config
 
 class BatchGenerator(object):

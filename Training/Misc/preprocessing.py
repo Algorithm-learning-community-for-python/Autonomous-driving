@@ -3,7 +3,6 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import OneHotEncoder
 import numpy as np
 import pandas as pd
-from data_configuration import Config
 
 def get_one_hot_encoded(categories, values):
     """ Returns one hot encoding of categories based on values"""
@@ -20,9 +19,8 @@ def get_one_hot_encoded(categories, values):
     onehot_encoded = onehot_encoder.transform(integer_encoded)
     return onehot_encoded
 
-def filter_input_based_on_steering(dataframe):
+def filter_input_based_on_steering(dataframe, conf):
     """ Filters dataframe consisting of sequences based on steering """
-    conf = Config()
     sequence_length = conf.input_size_data["Sequence_length"]
     new_df = pd.DataFrame()
     for _, row in dataframe.iterrows():
@@ -36,7 +34,9 @@ def filter_input_based_on_steering(dataframe):
 
         sum_steering = sum(abs(steerings))
         #pylint: disable=line-too-long
-        if follow_lane and sum_steering/sequence_length < 0.1 and random.randint(0, 10) > 2:
+        if follow_lane and \
+            sum_steering/sequence_length < 0.1 and \
+            random.randint(0, 10) > (10 - (10 * conf.filtering_degree)):
             continue
         else:
             new_df = new_df.append(row, ignore_index=True)

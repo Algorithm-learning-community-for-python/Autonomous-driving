@@ -1,6 +1,8 @@
 #pylint: disable=superfluous-parens
 
-
+import sys
+print(sys.path)
+exit()
 from batch_generator import BatchGenerator
 import numpy as np
 generator = BatchGenerator()

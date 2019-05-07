@@ -6,7 +6,6 @@ from keras.layers.pooling import MaxPooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.layers import Input, concatenate, LSTM
 from keras.layers import TimeDistributed
-# TODO: Insert timedistributed wrapper
 
 class NetworkHandler():
     def __init__(self):
@@ -52,12 +51,12 @@ class NetworkHandler():
         x = TimeDistributed(Activation(activation_function, name="activation_" + str(self.activation_layers)))(x)
         return x
 
-    def dropout(self, x, rate=0.0, td=True):
+    def dropout(self, x, rate=0.0, name=None, td=True):
         self.dropout_layers += 1
         if not td:
             x = Dropout(rate, name="dropout_" + str(self.dropout_layers))(x)
         else:
-            x = TimeDistributed(Dropout(rate, name="dropout_" + str(self.dropout_layers)))(x)
+            x = TimeDistributed(Dropout(rate, name="dropout_" + str(self.dropout_layers)), name=name)(x)
         return x
 
     def dense(self, x, output_size, td=True, activation_function=None, name=None):
@@ -79,7 +78,8 @@ def hsv_convert(x):
     return tf.image.rgb_to_hsv(x)  
 
 
-def load_network(input_size_data, input_data):
+def load_network(conf):
+    input_size_data, input_data = conf.input_size_data, conf.input_data
     inputs = []
     x = Input(shape=[input_size_data["Sequence_length"]] + input_size_data["Image"], name="input_1")
     inputs.append(x)
@@ -135,9 +135,23 @@ def load_network(input_size_data, input_data):
 
     # ######     INPUT DATA     ###### #
 
+  # DIRECTION
+    if input_data["Direction"]:
+        size = [input_size_data["Sequence_length"]] + input_size_data["Direction"]
+        direction = Input(size, name="input_2")
+        inputs.append(direction)
+        # Fully connected 1
+        direction = net.dense(direction, 32, name="direction_dense_1")
+        direction = net.dropout(direction, 0.5, td=True, name="direction_dropout_1")
+        # Fully connected 2
+        direction = net.dense(direction, 32, name="direction_dense_2")
+        direction = net.dropout(direction, 0.5, td=True, name="direction_dropout_2")
+        # Concatenate
+        x = concatenate([x, direction])
+
     # SPEED
     if input_data["Speed"]:
-        speed = Input(input_size_data["Speed"], name="input_speed")
+        speed = Input(input_size_data["Speed"], name="input_3")
         inputs.append(speed)
 
         # Fully connected 1
@@ -149,20 +163,7 @@ def load_network(input_size_data, input_data):
         # Concatenate
         x = concatenate([x, speed], 1)
 
-    # DIRECTION
-    if input_data["Direction"]:
-        size = [input_size_data["Sequence_length"]] + input_size_data["Direction"]
-        direction = Input(size, name="input_2")
-        inputs.append(direction)
-        # Fully connected 1
-        direction = net.dense(direction, 32)
-        direction = net.dropout(direction, 0.5)
-        # Fully connected 2
-        direction = net.dense(direction, 32)
-        direction = net.dropout(direction, 0.5)
-        # Concatenate
-        x = concatenate([x, direction])
-
+  
     # Traffic Light
     if input_data["TL_state"]:
         tl = Input(input_size_data["TL_state"], name="input_traffic_light")

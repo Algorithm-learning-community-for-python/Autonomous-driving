@@ -82,10 +82,12 @@ class Config:
             "optimizer": "rmsprop", #Adam(lr),
             "lr": lr,
             "metrics": None,
-            "epochs": 20,
-            "batch_size": 3,
+            "epochs": 2,
+            "batch_size": 8,
         }
         self.train_conf = TrainConf(**args)
         self.train_valid_split = 0.2
         self.bottom_crop = 115
         self.top_crop = 70
+        self.filter_input = True
+        self.filtering_degree = 0.8 % 1  # 0 = remove none, 1 = remove all
