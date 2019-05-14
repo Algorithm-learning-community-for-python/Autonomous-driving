@@ -2,6 +2,7 @@ carla
 examples
 util
 Training_data
+Validation_data
 python_api.md
 *.pyc
 

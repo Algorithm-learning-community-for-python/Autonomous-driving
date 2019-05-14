@@ -23,13 +23,14 @@ import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 from enum import Enum
 
-from Training.data_configuration import Config
+from Spatial.data_configuration import Config
+from Misc.preprocessing import get_one_hot_encoded
 
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
-config.log_device_placement = True  # to log device placement (on which device the operation ran)
+tf_config = tf.ConfigProto()
+tf_config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+tf_config.log_device_placement = True  # to log device placement (on which device the operation ran)
                                     # (nothing gets printed in Jupyter, only if you run it standalone)
-sess = tf.Session(config=config)
+sess = tf.Session(config=tf_config)
 set_session(sess)  # set this TensorFlow session as the default session for Keras
 
 
@@ -47,13 +48,18 @@ class RoadOption(Enum):
 
 class ImitatorController():
     def __init__(self, vehicle, local_planner):
-        self.temporal = True
+        self.temporal = False
         self.direction_sequence = []
         self.image_sequence = []
         self.conf = Config()
         self._vehicle = vehicle
         self._world = self._vehicle.get_world()
-        self.model = load_model("./Training/model.h5")
+        self.model = None
+        if self. temporal:
+            self.model = load_model("./Training/Temporal/Current_model/model.h5")
+        else:
+            self.model = load_model("./Training/Spatial/Current_model/best_val.hdf5")
+
         self.local_planner = local_planner
         self.direction_categories = [
             "RoadOption.VOID", 
@@ -64,14 +70,7 @@ class ImitatorController():
             "RoadOption.CHANGELANELEFT",
             "RoadOption.CHANGELANERIGHT"
         ]
-        self.top_crop = 100
-
-        self.label_encoder = LabelEncoder()
-        self.label_encoder.fit(self.direction_categories)
-        integer_encoded = self.label_encoder.transform(self.direction_categories)
-        integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)
-        self.direction_ohe_encoder = OneHotEncoder(sparse=False)
-        self.direction_ohe_encoder = self.direction_ohe_encoder.fit(integer_encoded)
+        self.img_size = self.conf.input_size_data["Image"]
 
 
     def run_step(self,recorder):
@@ -80,37 +79,68 @@ class ImitatorController():
         else:
             return self.run_spatial_step(recorder)
 
-    def run_spatial_step(self, recorder):
-        current_speed = get_speed(self._vehicle)
+    def get_direction(self):
+        #print("direction")
+
         direction = self.local_planner._target_road_option
         direction = [str(direction)]
-        print("DIREECTION: " + str(direction))
-        integer_encoded = self.label_encoder.transform(direction)
-        integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)
-        direction_ohe_encoded = self.direction_ohe_encoder.transform(integer_encoded)
-        direction = np.array(direction_ohe_encoded).reshape(1,7)
+        direction = get_one_hot_encoded(self.conf.direction_categories, direction)
+        return np.array(direction).reshape(1,7)
 
+    def get_tl_state(self):
+        #print("tl_state")
+        tl_state = self._vehicle.get_traffic_light_state()
+        tl_state = [str(tl_state)]
+        tl_state = get_one_hot_encoded(self.conf.tl_categories, tl_state)
+        return np.array(tl_state).reshape(1,3)
+
+    def get_speed(self):
+        #print("speed")
+
+        v = self._vehicle.get_velocity()
+        speed = (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))/100
+        return np.array([speed])
+
+    def get_speed_limit(self):
+        #print("speed_limit")
+
+        speed_limit = self._vehicle.get_speed_limit()
+        return np.array([float(speed_limit)/100])
+
+    def get_image(self, recorder):
+        #print("IMAGE")
+        img = self.to_rgb_array(recorder.images[-1])
+        img = img[self.conf.top_crop:, :, :]
+        return np.array(img).reshape(1, self.img_size[0], self.img_size[1], self.img_size[2])
+
+    def run_spatial_step(self, recorder):
+        """ Predicts and returns output """
         if recorder.images:
-            img = self.to_rgb_array(recorder.images[-1])
-            img = img[self.top_crop:, :,:]
+            X = {
+                "input_Image": self.get_image(recorder),
+                "input_Direction": self.get_direction(),
+                "input_Speed": self.get_speed(),
+                "input_speed_limit": self.get_speed_limit(),
+                "input_TL_state": self.get_tl_state()
+            }
             #print("################     PREDICTING      ################")
-            #TODO: RUN NN to predict throttle and steering
-            control = self.model.predict([np.array(img).reshape(1,140,320,3), direction], batch_size=1)
-            #print(control)
+            control = self.model.predict(X, batch_size=1)
+            control = {
+                out.name.split(':')[0].encode("ascii").split("/")[0]: control[i][0] for i, out in enumerate(self.model.outputs)
+            }
         else:
-            control = [[0]]
-        #print(recorder.speed)
-        if recorder.speed > 20:
-            throttle = 0
-        else:
-            throttle = 1 
+            #Default value if no prediction
+            control = {"output_Throttle":[0], "output_Brake":[0], "output_Steer": [0]}
 
-        steering = float(control[0][0]) #self.get_steering()
+        #print("################     Setting controls      ################")
+        throttle = float(control["output_Throttle"][0])
+        brake = float(control["output_Brake"][0])
+        steering = float(control["output_Steer"][0])
 
         control = carla.VehicleControl()
         control.steer = steering
         control.throttle = throttle
-        control.brake = 0.0
+        control.brake = brake
         control.hand_brake = False
         control.manual_gear_shift = False
 
@@ -118,13 +148,7 @@ class ImitatorController():
     
     def run_temporal_step(self, recorder):
         current_speed = get_speed(self._vehicle)
-        direction = self.local_planner._target_road_option
-        direction = [str(direction)]
-        print("DIREECTION: " + str(direction))
-        integer_encoded = self.label_encoder.transform(direction)
-        integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)
-        direction_ohe_encoded = self.direction_ohe_encoder.transform(integer_encoded)
-        direction = np.array(direction_ohe_encoded).reshape(1,7)
+        direction = self.get_direction()
 
         self.direction_sequence.append(direction[0])
         #print(self.direction_sequence)

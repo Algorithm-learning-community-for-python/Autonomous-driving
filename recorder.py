@@ -643,13 +643,14 @@ class CameraManager(object):
         self.transform_index = 1
         self.sensors = [
             ['sensor.camera.rgb', cc.Raw, 'Camera RGB'],
-            ['sensor.camera.depth', cc.Raw, 'Camera Depth (Raw)'],
-            ['sensor.camera.depth', cc.Depth, 'Camera Depth (Gray Scale)'],
-            ['sensor.camera.depth', cc.LogarithmicDepth, 'Camera Depth (Logarithmic Gray Scale)'],
-            ['sensor.camera.semantic_segmentation', cc.Raw, 'Camera Semantic Segmentation (Raw)'],
-            ['sensor.camera.semantic_segmentation', cc.CityScapesPalette,
-             'Camera Semantic Segmentation (CityScapes Palette)'],
-            ['sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)']]
+            #['sensor.camera.depth', cc.Raw, 'Camera Depth (Raw)'],
+            #['sensor.camera.depth', cc.Depth, 'Camera Depth (Gray Scale)'],
+            #['sensor.camera.depth', cc.LogarithmicDepth, 'Camera Depth (Logarithmic Gray Scale)'],
+            #['sensor.camera.semantic_segmentation', cc.Raw, 'Camera Semantic Segmentation (Raw)'],
+            #['sensor.camera.semantic_segmentation', cc.CityScapesPalette,
+            # 'Camera Semantic Segmentation (CityScapes Palette)'],
+            #['sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)']
+            ]
         world = self._parent.get_world()
         bp_library = world.get_blueprint_library()
         for item in self.sensors:
@@ -752,6 +753,8 @@ class Recorder():
         else:
             last_folder = 0
             for folder in os.listdir('Training_data'):
+                if folder == ".DS_Store" or folder == "store.h5":
+                    continue
                 if int(folder) >= last_folder:
                     last_folder = int(folder)+1
             folder = last_folder 
@@ -792,7 +795,7 @@ class Recorder():
     @staticmethod
     def record(weak_self, image):
         self = weak_self()
-        if self.world.camera_manager.recording:
+        if self.world.camera_manager.recording and self.agent._local_planner._target_road_option != None:
             #current_time = pygame.time.get_ticks()
             #delta_time = current_time - self.previous_time
             #if delta_time > 250:
@@ -830,7 +833,7 @@ class Recorder():
             traffic_light_state = world.player.get_traffic_light_state()
             self.recording_text.append({
                 'frame': frame_number,
-                'Speed': (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)),
+                'Speed': np.round((3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))/100, 4),
                 'Throttle': control.throttle,
                 'Steer': control.steer,
                 'Brake': control.brake,
@@ -838,7 +841,7 @@ class Recorder():
                 'Hand brake': control.hand_brake,
                 'Manual': control.manual_gear_shift,
                 'Gear': control.gear,
-                'speed_limit': speed_limit,
+                'speed_limit': float(speed_limit)/100,
                 'at_TL': is_at_traffic_light,
                 'TL': traffic_light,
                 'TL_state': traffic_light_state
@@ -851,6 +854,9 @@ class Recorder():
         control = world.player.get_control()
         steering = control.steer
         direction = self.agent._local_planner._target_road_option
+        if direction == None:
+            direction = self.agent._local_planner.RoadOption.LANEFOLLOW
+        print(direction)
         self.directions.append(direction)
         # REMOVED AFTER FIX IN NEW VERSION
         """
@@ -917,19 +923,26 @@ def game_loop(args):
             if len(agent._local_planner._waypoints_queue) == 0:
                 world.camera_manager.toggle_recording()
                 recorder.stop_recording()
+                print("Target Reached, stopping recording session...")
                 return
 
             world.tick(clock)
             world.render(display)
             pygame.display.flip()
+            speed_limit = world.player.get_speed_limit()
+            agent._local_planner.set_speed(speed_limit)
+
             control = agent.run_step()
             control.manual_gear_shift = False
             world.player.apply_control(control)
 
     finally:
         if world is not None:
-            if recorder.sensor is not None:
-                recorder.sensor.destroy()
+            try:
+                if recorder.sensor is not None:
+                    recorder.sensor.destroy()
+            except UnboundLocalError:
+                print("No recorder object")
             world.destroy()
 
         pygame.quit()

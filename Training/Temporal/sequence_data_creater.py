@@ -1,6 +1,6 @@
 """ Used to list all folders"""
 import os
-from Misc.preprocessing import get_one_hot_encoded, filter_input_based_on_steering
+from Misc.preprocessing import get_one_hot_encoded, filter_input_based_on_steering, get_image
 
 import cv2
 import pandas as pd
@@ -80,26 +80,11 @@ class SequenceCreator(object):
                 cur_frame = row["frame"]
 
                 for f in frames:
-                    # Add padding to frame number
-                    frame_len = len(str(f))
-                    pad = ''
-                    for _ in range(8 - frame_len):
-                        pad += '0'
-                    frame = str(f)
-
-                    # Fetch image
-                    file_path = self.data_paths[j] + image_path + pad + frame + '.png'
-                    img = cv2.imread(file_path)
-
-                    if len(img) == 0:
-                        print("Error fetching image")
-
+                    img = get_image(self.data_paths[j] + image_path, f)
                     # Converting to rgb
                     img = img[..., ::-1]
-
                     # Cropping
                     img = img[self.top_crop:, :, :]
-
                     temp_images.append(img)
                 np.save(self.data_paths[j] + "/Sequences/" + str(cur_frame), np.array(temp_images))
 

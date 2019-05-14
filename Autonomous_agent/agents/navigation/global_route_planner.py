@@ -274,7 +274,7 @@ class GlobalRoutePlanner(object):
                 decision = next_edge['type']
         else:
             decision = next_edge['type']
-
+        print(decision)
         return decision
 
     def abstract_route_plan(self, origin, destination):

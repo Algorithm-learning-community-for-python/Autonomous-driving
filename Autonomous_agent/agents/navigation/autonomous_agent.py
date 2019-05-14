@@ -40,7 +40,7 @@ class AutonomousAgent(Agent):
         self._local_planner = LocalPlanner(
             self._vehicle, opt_dict={'target_speed' : target_speed,
             'lateral_control_dict':args_lateral_dict})
-        self._hop_resolution = 2.0
+        self._hop_resolution = 3.0
         self._path_seperation_hop = 2
         self._path_seperation_threshold = 0.5
         self._target_speed = target_speed

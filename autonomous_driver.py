@@ -860,7 +860,7 @@ def game_loop(args):
         clock = pygame.time.Clock()
         while True:
             if controller.parse_events(client, world, clock, recorder):
-                return
+               return
 
             # as soon as the server is ready continue!
             if not world.world.wait_for_tick(10.0):
@@ -869,8 +869,23 @@ def game_loop(args):
             world.tick(clock)
             world.render(display)
             pygame.display.flip()
+            speed_limit = world.player.get_speed_limit()
+            agent._local_planner.set_speed(speed_limit)
             control = agent.run_step(recorder)
+            if control.throttle < 0.5:
+                control.throttle = 0
+            else:
+                control.throttle = 1
+
+            if control.brake >0.5:
+                control.brake = 1
+            else:
+                control.brake = 0
+            
+            #control.gear=2
             control.manual_gear_shift = False
+
+            print(control)
             world.player.apply_control(control)
 
     finally:

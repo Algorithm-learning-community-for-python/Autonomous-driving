@@ -2,27 +2,35 @@
 
 from batch_generator import BatchGenerator
 import numpy as np
-from Misc.data_configuration import Config
+from Spatial.data_configuration import Config
 conf = Config()
+conf.train_conf.batch_size = 1
 generator = BatchGenerator(conf)
 g = generator.generate()
+input_measures = [key for key in conf.available_columns if conf.input_data[key]]
+output_measures = [key for key in conf.available_columns if conf.output_data[key]]
+
 
 for n in g:
-    #n = g.next()
     print("Progress:")
     print(generator.current_idx)
     print(generator.folder_index)
     bx = n[0]
     by = n[1]
-    print("Inputs: ")
-    print("Images shape: " + str(bx["input_1"].shape))
-    image = bx["input_1"][0]
-    print(image)
-    print("Direction shape: " + str(bx["input_2"].shape))
-    print("Output shape: " + str(by["output"].shape))
+    print(bx)
+    """
+    print("INPUT SAMPLE BATCH")
+    print(bx)
+    for measure in input_measures:
+        print("inpu_"+measure)
+        print(measure + " " + str(bx["input_"+measure]))
 
-    print("Direction sample: " + str(bx["input_2"][0]))
-    print("Output sample: " + str(by["output"][0]))
+    print("OUTPUT SAMPLE BATCH")
+
+    for measure in output_measures:
+        print("output_"+measure)
+        print(measure + " " + str(by["output_"+measure]))
+    """
     raw_input()
 """
     sy = by[0]

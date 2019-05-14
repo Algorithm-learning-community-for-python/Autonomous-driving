@@ -4,6 +4,5 @@
         "**/Training_data/**": true,
 
     },
-    "python.linting.pylintArgs": ["--extension-pkg-whitelist=cv2", "--ignored-modules=pandas" ]
-    
+    "python.linting.pylintArgs": ["--extension-pkg-whitelist=cv2", "--extension-pkg-whitelist=pygame", "--ignored-modules=pandas" ],
 }
