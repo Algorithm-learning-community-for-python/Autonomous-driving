@@ -4,6 +4,7 @@ import random
 import pandas as pd
 import numpy as np
 from Misc.misc import get_image, get_data_paths
+from Misc.preprocessing import filter_input_based_on_steering
 
 class BatchGenerator(object):
     """ Generator that yields batches of training data concisting of multiple inputs"""
@@ -44,9 +45,8 @@ class BatchGenerator(object):
         self.data = pd.read_csv(path)
 
         #Filter
-        self.data = self.data.drop(
-            self.data[(np.power(self.data.Steer, 2) < 0.001) & \
-            random.randint(0, 10) > (10 - (10 * self.conf.filtering_degree))].index)
+        if self.conf.filter_input:
+            self.data = filter_input_based_on_steering(self.data, self.conf, temporal=False)
 
         for index, row in self.data.iterrows():
             self.data.at[index, "Direction"] = [int(x) for x in row["Direction"].strip("][").split(".")[:-1]]

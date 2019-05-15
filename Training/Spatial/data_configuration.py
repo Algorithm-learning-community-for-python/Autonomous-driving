@@ -22,14 +22,15 @@ class Config(object):
             "lr": lr,
             "metrics": None,
             "epochs": 30,
-            "batch_size": 32,
+            "batch_size": 8,
         }
         self.train_conf = TrainConf(**args)
         self.train_valid_split = 0.2
         self.bottom_crop = 0 #115
         self.top_crop = 100
         self.filter_input = True
-        self.filtering_degree = 0.5  # 0 = remove none, 1 = remove all
+        self.filtering_degree = 0.9  # 0 = remove none, 1 = remove all
+        self.filter_threshold = 0.1
         self.recordings_path = "/Measurments/modified_recording.csv"
         self.folder_index = -1
 

@@ -6,8 +6,7 @@ from keras.layers.core import Dense, Activation, Flatten, Lambda, Dropout
 from keras.layers.convolutional import Conv2D
 from keras.layers.pooling import MaxPooling2D
 from keras.layers.normalization import BatchNormalization
-
-class NetworkHandler():
+class NetworkHandler(object):
     """ Class that holds the network in use"""
     def __init__(self):
         self.conv_layers = 0
@@ -27,7 +26,7 @@ class NetworkHandler():
         return x
 
 
-    def conv(self, x, filters, kernel_size, stride, padding='valid'):
+    def conv(self, x, filters, kernel_size, stride, padding='valid', activation=None):
         """ Adds a convolutional layer """
         self.conv_layers += 1
         x = Conv2D(
@@ -35,6 +34,7 @@ class NetworkHandler():
             kernel_size=kernel_size,
             strides=stride,
             padding=padding,
+            activation=activation,
             name="conv_" + str(self.conv_layers)
         )(x)
         return x
@@ -67,10 +67,12 @@ class NetworkHandler():
         x = Dropout(rate, name="dropout_" + str(self.dropout_layers))(x)
         return x
 
-    def dense(self, x, output_size, function=None):
+    def dense(self, x, output_size, function=None, name=None):
         """ Adds a dense layer """
+        if not name:
+            name="dense_" + str(self.dense_layers)
         self.dense_layers += 1
-        x = Dense(output_size, activation=function, name="dense_" + str(self.dense_layers))(x)
+        x = Dense(output_size, activation=function, name=name)(x)
         return x
 
 def hsv_convert(x):
@@ -80,9 +82,12 @@ def hsv_convert(x):
 
 def load_network(conf):
     """ Creates and returns a model using the class network handler """
-    input_size_data, input_data = conf.input_size_data, conf.input_data
+    input_measures = [key for key in conf.available_columns if conf.input_data[key]]
+    output_measures = [key for key in conf.available_columns if conf.output_data[key]]
+    input_size_data = conf.input_size_data
+
     inputs = []
-    x = Input(shape=input_size_data["Image"], name="input_1")
+    x = Input(shape=input_size_data["Image"], name="input_Image")
     inputs.append(x)
     net = NetworkHandler()
 
@@ -135,33 +140,12 @@ def load_network(conf):
     x = net.dense(x, 512)
     x = net.dropout(x, 0.3)
 
+
     #######     INPUT DATA     #######
-
-    # DIRECTION
-    if input_data["Direction"]:
-        direction = Input(input_size_data["Direction"], name="input_Direction")
-        inputs.append(direction)
-        x = concatenate([x, direction], 1)
-
-    # SPEED
-    if input_data["Speed"]:
-        speed = Input(input_size_data["Speed"], name="input_Speed")
-        inputs.append(speed)
-        x = concatenate([x, speed], 1)
-
-    # Traffic Light
-    if input_data["TL_state"]:
-        tl = Input(input_size_data["TL_state"], name="input_TL_state")
-        inputs.append(tl)
-        x = concatenate([x, tl], 1)
-
-    # Speed limit
-    if input_data["speed_limit"]:
-        speed_limit = Input(input_size_data["speed_limit"], name="input_speed_limit")
-        inputs.append(speed_limit)
-        x = concatenate([x, speed_limit], 1)
-
-
+    for measure in input_measures:
+        input_layer = Input(input_size_data[measure], name="input_" + measure)
+        inputs.append(input_layer)
+        x = concatenate([x, input_layer], 1)
 
     x = net.dense(x, 512)
     x = net.dropout(x, 0.5)
@@ -170,8 +154,19 @@ def load_network(conf):
     x = net.dropout(x, 0.5)
 
     x = net.dense(x, 32)
-    x = Dense(input_size_data["Output"], name="output")(x)
 
-    net.model = Model(inputs=inputs, outputs=x)
+     #######     OUTPUT DATA     #######
+    outputs = []
+    for measure in output_measures:
+        output_layer = net.dense(
+            x,
+            conf.output_size_data[measure],
+            function=conf.activation_functions["output_" + measure],
+            name="output_" + measure
+            )
+        outputs.append(output_layer)
+
+
+    net.model = Model(inputs=inputs, outputs=outputs)
 
     return net

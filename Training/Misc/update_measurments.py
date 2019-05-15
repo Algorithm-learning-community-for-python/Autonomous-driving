@@ -16,9 +16,9 @@ def extend_steering_commands(dataframe):
     """
     for index, row in dataframe.iterrows():
         if row.Direction != "RoadOption.LANEFOLLOW":
-            rows_to_change = 10
-            if index > 10:
-                for i in range(index-10, index):
+            rows_to_change = 6
+            if index > 6:
+                for i in range(index-6, index):
                     if dataframe.loc[i, "Direction"] != "RoadOption.LANEFOLLOW" and \
                         dataframe.loc[i, "Direction"] != row.Direction:
                         rows_to_change = (index - 1) - i
@@ -58,7 +58,7 @@ DATA_PATHS = get_data_paths() + get_data_paths("Validation_data")
 
 for path in DATA_PATHS:
     df = pd.read_csv(path + MEASURMENT_PATH)
-    #df = extend_steering_commands(df)
+    df = extend_steering_commands(df)
     one_hot_encode_fields(df)
     pad_frame(df)
     round_off_values(df, "Steer", 3)

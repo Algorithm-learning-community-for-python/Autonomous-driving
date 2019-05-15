@@ -1,22 +1,30 @@
 import pandas as pd
 from preprocessing import filter_input_based_on_steering
-from data_configuration import Config
+from Spatial.data_configuration import Config
 import os
+import matplotlib
+matplotlib.use("agg")
+
 import matplotlib.pyplot as plt
+from misc import get_data_paths
 
 conf = Config()
 data_paths=[]
-for folder in sorted(os.listdir('../../Training_data')):
-    if folder == ".DS_Store" or folder == "store.h5":
-        continue
-    data_paths.append("../../Training_data/" + folder)
-data_paths.sort(key=lambda a: int(a.split("/")[-1]))
+temporal = False
+data_paths = get_data_paths()
 recordings = []
-store = pd.HDFStore("../../Training_data/store.h5")
-for path in data_paths:
-    df_name = "Recording_" + path.split("/")[-1]
-    recording = store[df_name]
-    recordings.append(recording)
+if temporal:
+    store = pd.HDFStore("../../Training_data/store.h5")
+    for path in data_paths:
+        df_name = "Recording_" + path.split("/")[-1]
+        recording = store[df_name]
+        recordings.append(recording)
+else:
+    for path in data_paths:
+        df = pd.read_csv(path+"/Measurments/recording.csv")
+        
+        recordings.append(df)
+        
 
 follow_lane = 0
 intersection = 0
@@ -25,11 +33,16 @@ steerings = []
 for dataframe in recordings:
     for _, row in dataframe.iterrows():
         # Add or remove the current sequence
-        directions = row["Direction"]
-        steerings.append(row["Steer"][-1])
         follow = True
-        for direction in directions:
-            if direction[2] == 0:
+        if temporal:
+            directions = row["Direction"]
+            steerings.append(row["Steer"][-1])
+            for direction in directions:
+                if direction[2] == 0:
+                    follow = False
+        else:
+            steerings.append(row["Steer"])
+            if row["Direction"]!="RoadOption.LANEFOLLOW" and row["Direction"]!="":
                 follow = False
 
         total_samples += 1
@@ -45,22 +58,28 @@ l = len([x for x in steerings if abs(x) > 0.1])
 print("Samples steering more than 0.1: " + str(l))
 l = len([x for x in steerings if abs(x) > 0.4])
 print("Samples steering more than 0.4: " + str(l))
-plt.hist(steerings, 20)
-plt.show()
+fig1, ax1 = plt.subplots()
+ax1.hist(steerings, 20)
+fig1.savefig("before_filtering")
 
 follow_lane = 0
 intersection = 0
 total_samples = 0
 steerings = []
 for recording in recordings:
-    dataframe = filter_input_based_on_steering(recording)
+    dataframe = filter_input_based_on_steering(recording, conf, temporal)
     for _, row in dataframe.iterrows():
         # Add or remove the current sequence
-        directions = row["Direction"]
-        steerings.append(row["Steer"][-1])
         follow = True
-        for direction in directions:
-            if direction[2] == 0:
+        if temporal:
+            directions = row["Direction"]
+            steerings.append(row["Steer"][-1])
+            for direction in directions:
+                if direction[2] == 0:
+                    follow = False
+        else:
+            steerings.append(row["Steer"])
+            if row["Direction"]!="RoadOption.LANEFOLLOW" and row["Direction"]!="":
                 follow = False
 
         total_samples += 1
@@ -78,5 +97,6 @@ l = len([x for x in steerings if abs(x) > 0.1])
 print("Samples steering more than 0.1: " + str(l))
 l = len([x for x in steerings if abs(x) > 0.4])
 print("Samples steering more than 0.4: " + str(l))
-plt.hist(steerings, 20)
-plt.show()
+fig2, ax2 = plt.subplots()
+ax2.hist(steerings, 20)
+fig2.savefig("after_filtering")

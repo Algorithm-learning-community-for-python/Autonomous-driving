@@ -23,7 +23,10 @@ import random
 import re
 import sys
 import weakref
+import csv
 
+try:
+    import pygame
 except ImportError:
     raise RuntimeError('cannot import pygame, make sure pygame package is installed')
 
@@ -48,15 +51,15 @@ except IndexError:
 # -- add PythonAPI for release mode --------------------------------------------
 # ==============================================================================
 try:
-    sys.path.append(glob.glob('Autonomous_agent')[0])
+    sys.path.append(glob.glob('carla')[0])
 except IndexError:
     pass
 
 import carla
 from carla import ColorConverter as cc
-from agents.navigation.autonomous_agent import AutonomousAgent
+from agents.navigation.basic_agent import *
 from agents.navigation.local_planner import RoadOption
-
+from Misc.recording_to_video import recording_to_video
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
@@ -85,6 +88,9 @@ class World(object):
         self.hud = hud
         self.player = None
         self.recorder = None
+        self.collision_sensor = None
+        self.lane_invasion_sensor = None
+
         self._actor_filter = 'vehicle.bmw.grandtourer'
         self.world.on_tick(hud.on_world_tick)
         self.restart()
@@ -102,14 +108,19 @@ class World(object):
             spawn_point.location.z += 2.0
             spawn_point.rotation.roll = 0.0
             spawn_point.rotation.pitch = 0.0
-            if self.player is not None:
-                self.player.destroy()
+            self.player.destroy()
+            if self.collision_sensor is not None:
+                self.collision_sensor.sensor.destroy()
+            if self.lane_invasion_sensor is not None:
+                self.lane_invasion_sensor.sensor.destroy()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         while self.player is None:
-            #spawn_point = self.map.get_spawn_points()[-1]
-            spawn_points = self.map.get_spawn_points()
-            spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
+            spawn_point = self.map.get_spawn_points()[-1]
+            #spawn_points = self.map.get_spawn_points()
+            #spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
+        self.collision_sensor = CollisionSensor(self.player)
+        self.lane_invasion_sensor = LaneInvasionSensor(self.player)
 
 
 # ==============================================================================
@@ -125,6 +136,64 @@ class HUD(object):
         self._server_clock.tick()
         self.server_fps = self._server_clock.get_fps()
 
+
+# ==============================================================================
+# -- CollisionSensor -----------------------------------------------------------
+# ==============================================================================
+
+
+class CollisionSensor(object):
+    def __init__(self, parent_actor):
+        self.sensor = None
+        self.collision = False
+        self._parent = parent_actor
+        world = self._parent.get_world()
+        bp = world.get_blueprint_library().find('sensor.other.collision')
+        self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)
+        weak_self = weakref.ref(self)
+        self.sensor.listen(lambda event: CollisionSensor._on_collision(weak_self, event))
+
+    @staticmethod
+    def _on_collision(weak_self, event):
+        self = weak_self()
+        if not self:
+            return
+        actor_type = get_actor_display_name(event.other_actor)
+        impulse = event.normal_impulse
+        intensity = math.sqrt(impulse.x ** 2 + impulse.y ** 2 + impulse.z ** 2)
+        print('Collision with %r' % actor_type)
+        print("with intensity: "+ str(intensity))
+        self.collision = True
+
+
+
+# ==============================================================================
+# -- LaneInvasionSensor --------------------------------------------------------
+# ==============================================================================
+
+
+class LaneInvasionSensor(object):
+    def __init__(self, parent_actor):
+        self.lane_invasion = ""
+        self.sensor = None
+        self._parent = parent_actor
+        world = self._parent.get_world()
+        bp = world.get_blueprint_library().find('sensor.other.lane_invasion')
+        self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)
+        weak_self = weakref.ref(self)
+        self.sensor.listen(lambda event: LaneInvasionSensor._on_invasion(weak_self, event))
+
+    @staticmethod
+    def _on_invasion(weak_self, event):
+        self = weak_self()
+        if not self:
+            return
+        lane_types = set(x.type for x in event.crossed_lane_markings)
+        text = ['%r' % str(x).split()[-1] for x in lane_types]
+
+        self.lane_invasion = 'Crossed line %s' % ' and '.join(text)
+        print(self.lane_invasion)
+
 # ==============================================================================
 # -- Recorder() ---------------------------------------------------------------
 # ==============================================================================
@@ -138,9 +207,6 @@ class Recorder():
         self.temp_steering = []
         self.folder_name = folder_name
         self.path = path
-        
-
-
         self.camera_transform = carla.Transform(carla.Location(x=1.6, z=1.7))
         self._sensor = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
         server_world = world.player.get_world()
@@ -163,12 +229,13 @@ class Recorder():
     @staticmethod
     def record(weak_self, image):
         self = weak_self()
-        if self.agent._local_planner._target_road_option != None:
-            self.record_output(self.world, image.frame_number)
-            self.record_image(image)
+        #if self.agent._local_planner._target_road_option != None:
+        self.record_output(self.world, image.frame_number)
+        self.record_image(image)
 
 
     def stop_recording(self):
+        print(len(self.recording_text))
         if len(self.recording_text) > 0:
             # define the name of the directory to be created
             if self.folder_name:
@@ -183,6 +250,7 @@ class Recorder():
                 folder = last_folder
 
             self.path = self.path + "/" + str(folder)
+            print(self.path)
 
             try:
                 os.mkdir(self.path)
@@ -193,7 +261,7 @@ class Recorder():
                 print ("Creation of the directory %s failed" % self.path)
             else:
                 print ("Successfully created the directory %s " % self.path)
-
+            print(len(self.images))
             keys = self.recording_text[0].keys()
             with open(self.path + '/Measurments/recording.csv', 'wb') as f:
                 dict_writer = csv.DictWriter(f, keys)
@@ -205,6 +273,9 @@ class Recorder():
             self.images = []
 
     def record_output(self, world, frame_number):
+        lane_invasion = world.lane_invasion_sensor.lane_invasion
+        if len(lane_invasion) > 2:
+            world.lane_invasion_sensor.lane_invasion = ""
         control = world.player.get_control()
         v = world.player.get_velocity()
         speed_limit = world.player.get_speed_limit()
@@ -226,7 +297,9 @@ class Recorder():
             'TL': traffic_light,
             'TL_state': traffic_light_state,
             'fps': self.world.hud.server_fps,
-            'Direction': self.agent._local_planner._target_road_option
+            'Direction': self.agent._local_planner._target_road_option,
+            'Lane_Invasion': lane_invasion,
+            'Collision': self.world.collision_sensor.collision
         })
 
     def record_image(self, image):
@@ -246,35 +319,77 @@ def game_loop(args):
         client = carla.Client(args.host, args.port)
         client.set_timeout(4.0)
 
-        display = pygame.display.set_mode(
-            (args.width, args.height),
-            pygame.HWSURFACE | pygame.DOUBLEBUF)
+        hud = HUD()
+        world = World(client.get_world(), hud)
 
-        hud = HUD(args.width, args.height)
-        world = World(client.get_world(), hud, args.filter)
-        controller = KeyboardControl(world, False)
+        agent = BasicAgent(world.player, autonomous=True)
 
-        ### NB: Random start point each time
-        agent = AutonomousAgent(world.player)
-        spawn_point = world.map.get_spawn_points()[0]
-        agent.set_destination((spawn_point.location.x,
-                               spawn_point.location.y,
-                               spawn_point.location.z))
+        #start_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
+        start_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
+        #destination = random.choice(world.map.get_spawn_points())
+        destination = world.map.get_spawn_points()[0]
+        agent.set_destination((destination.location.x,
+                               destination.location.y,
+                               destination.location.z))
 
-        recorder = Recorder(world, agent)
+        distance = start_waypoint.transform.location.distance(
+                destination.location)
+
+        print("Initial distance: " + str(distance))
+        recorder = Recorder(world, agent, args.path)
         world.recorder = recorder
-        clock = pygame.time.Clock()
-        while True:
-            if controller.parse_events(client, world, clock, recorder):
-               return
+        counter = 0
+        fps_que =[]
+        distance_que = []
+        stop = False
 
+        while True:
             # as soon as the server is ready continue!
             if not world.world.wait_for_tick(10.0):
                 continue
 
-            world.tick(clock)
-            world.render(display)
-            pygame.display.flip()
+            if world.collision_sensor.collision:
+                print("Stopping recording session due to collision...")
+                import time
+                time.sleep(1)
+                stop = True
+
+            # Stop recorder when target destination has been reached
+            if len(agent._local_planner._waypoints_queue) == 0:
+                print("Target Reached, stopping recording session...")
+                stop = True
+
+            counter += 1
+            fps_que.append(world.hud.server_fps)
+
+            if counter % 100 == 0:
+                print("step: " + str(counter))
+                print("average fps: " + str(sum(fps_que)/len(fps_que)))
+                fps_que = []
+                cur_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
+                distance = cur_waypoint.transform.location.distance(destination.location)
+                distance_que.append(math.ceil(distance))
+                print("Distance to goal: " + str(distance))
+                if len(distance_que) > 10:
+                    distance_que = distance_que[-10:]
+                    if len(set(distance_que)) == 1:
+                        print("Not moving anymore... quiting recording")
+                        stop = True
+
+            if stop:
+                if recorder.sensor is not None:
+                    recorder.sensor.destroy()
+                if world.collision_sensor.sensor is not None:
+                    world.collision_sensor.sensor.destroy()
+                if world.lane_invasion_sensor.sensor is not None:
+                    world.lane_invasion_sensor.sensor.destroy()
+                if world is not None:
+                    world.player.destroy()
+                print("Storing images and measurments...")
+                recorder.stop_recording()
+                return
+
+
             speed_limit = world.player.get_speed_limit()
             agent._local_planner.set_speed(speed_limit)
             control = agent.run_step(recorder)
@@ -288,16 +403,10 @@ def game_loop(args):
             else:
                 control.brake = 0
             
-            #control.gear=2
-            control.manual_gear_shift = False
-
-            print(control)
             world.player.apply_control(control)
 
     finally:
-        if world is not None:
-            world.destroy()
-
+        recording_to_video(path="Test_recordings")
         pygame.quit()
 
 
@@ -309,6 +418,10 @@ def game_loop(args):
 def main():
     argparser = argparse.ArgumentParser(
         description='CARLA Manual Control Client')
+    argparser.add_argument(
+        '--path',
+        default='Test_recordings',
+        help='Where to store data')
     argparser.add_argument(
         '-v', '--verbose',
         action='store_true',

@@ -112,7 +112,7 @@ def load_network(conf):
     # CONV 4
     x = net.conv(x, 64, 3, 1, activation="elu")
 
-    x = net.dropout(x, rate=0.5)
+    #x = net.dropout(x, rate=0.5)
     
     # FLATTEN
     x = Flatten()(x)
@@ -123,9 +123,12 @@ def load_network(conf):
         inputs.append(input_layer)
         x = concatenate([x, input_layer], 1)
 
-    x = net.dense(x, 100, function="elu")
-    x = net.dense(x, 50, function="elu")
-    x = net.dense(x, 10, function="elu")
+    x = net.dense(x, 512, function="elu")
+    x = net.dropout(x, rate=0.5)
+    x = net.dense(x, 164, function="elu")
+    x = net.dropout(x, rate=0.5)
+    x = net.dense(x, 32, function="elu")
+    x = net.dense(x, 8, function="elu")
 
     
     #######     OUTPUT DATA     #######

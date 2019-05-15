@@ -79,13 +79,13 @@ except IndexError:
 # -- add PythonAPI for release mode --------------------------------------------
 # ==============================================================================
 try:
-    sys.path.append(glob.glob('Autonomous_agent')[0])
+    sys.path.append(glob.glob('carla')[0])
 except IndexError:
     pass
 
 import carla
 from carla import ColorConverter as cc
-from agents.navigation.autonomous_agent import AutonomousAgent
+from agents.navigation.basic_agent import *
 from agents.navigation.local_planner import RoadOption
 
 
@@ -112,6 +112,8 @@ def get_actor_display_name(actor, truncate=250):
 class World(object):
     def __init__(self, carla_world, hud, actor_filter):
         self.world = carla_world
+        #carla_world.set_weather(carla.WeatherParameters.CloudyNoon)
+
         self.map = self.world.get_map()
         self.hud = hud
         self.player = None
@@ -146,6 +148,7 @@ class World(object):
             spawn_point.rotation.pitch = 0.0
             self.destroy()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
+        print("RESTARTING")
         while self.player is None:
             spawn_point = self.map.get_spawn_points()[-1]
             #spawn_points = self.map.get_spawn_points()
@@ -849,7 +852,7 @@ def game_loop(args):
         controller = KeyboardControl(world, False)
 
         ### NB: Random start point each time
-        agent = AutonomousAgent(world.player)
+        agent = BasicAgent(world.player, autonomous=True)
         spawn_point = world.map.get_spawn_points()[0]
         agent.set_destination((spawn_point.location.x,
                                spawn_point.location.y,

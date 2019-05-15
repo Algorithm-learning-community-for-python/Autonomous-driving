@@ -250,6 +250,8 @@ def game_loop(args):
         hud = HUD()
         world = World(client.get_world(), hud)
 
+        #world.world.set_weather(carla.WeatherParameters.CloudyNoon)
+
         agent = BasicAgent(world.player)
 
         start_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
@@ -269,6 +271,7 @@ def game_loop(args):
         fps_que =[]
         distance_que = []
         stop = False
+        
         while True:
             # as soon as the server is ready continue!
             if not world.world.wait_for_tick(10.0):
@@ -306,7 +309,7 @@ def game_loop(args):
             speed_limit = world.player.get_speed_limit()
             agent._local_planner.set_speed(speed_limit)
 
-            control = agent.run_step()
+            control = agent.run_step(recorder)
             control.manual_gear_shift = False
             world.player.apply_control(control)
 
@@ -324,7 +327,7 @@ def main():
         description='CARLA Manual Control Client')
     argparser.add_argument(
         '--path',
-        default='Training_data',
+        default='Validation_data',
         help='Where to store data')
     argparser.add_argument(
         '-v', '--verbose',
