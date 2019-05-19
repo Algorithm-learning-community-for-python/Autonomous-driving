@@ -730,15 +730,15 @@ class CameraManager(object):
 # ==============================================================================
 
 class Recorder():
-    def __init__(self, world, agent):
+    def __init__(self, world, agent, path, folder_name=None):
         self.recording_text = []
         self.images = []
         self.world = world
-        self.directions = []
-        self.current_direction = RoadOption.LANEFOLLOW
         self.agent = agent
         self.temp_steering = []
-        self.speed = 0
+        self.folder_name = folder_name
+        self.folder = None
+        self.path = path
         self.camera_transform = carla.Transform(carla.Location(x=1.6, z=1.7))
         self._sensor = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
         server_world = world.player.get_world()
@@ -759,76 +759,86 @@ class Recorder():
     @staticmethod
     def record(weak_self, image):
         self = weak_self()
-        self.record_direction(self.world, image.frame_number)
+        #self.record_direction(self.world, image.frame_number)
         self.record_output(self.world, image.frame_number)
         self.record_image(image)
 
     def stop_recording(self):
-        for recording in self.recording_text:
-            if self.directions:
-                recording["Direction"] = self.directions.pop(0)
+        # print(len(self.recording_text))
+        if len(self.recording_text) > 0:
+            # define the name of the directory to be created
+            if self.folder_name:
+                self.folder = self.folder_name
             else:
-                print("No directions left")
-                break
+                last_folder = 0
+                for folder in os.listdir(self.path):
+                    if folder == ".DS_Store" or folder == "store.h5":
+                        continue
+                    if int(folder) >= last_folder:
+                        last_folder = int(folder)+1
+                self.folder = last_folder
 
-        toCSV = self.recording_text
-        keys = toCSV[0].keys()
-        with open('Testing/recording.csv', 'wb') as f:
-            dict_writer = csv.DictWriter(f, keys)
-            dict_writer.writeheader()
-            dict_writer.writerows(toCSV)
-        self.recording_text = []
-        for image in self.images:
-            image.save_to_disk('Testing/_out/%08d' % image.frame_number)
-        self.images = []
+            self.path = self.path + "/" + str(self.folder)
+            print(self.path)
+
+            try:
+                os.mkdir(self.path)
+                os.mkdir(self.path + "/Measurments")
+                os.mkdir(self.path + "/Images")
+
+            except OSError:
+                print ("Creation of the directory %s failed" % self.path)
+            else:
+                print ("Successfully created the directory %s " % self.path)
+            print(len(self.images))
+            keys = self.recording_text[0].keys()
+            with open(self.path + '/Measurments/recording.csv', 'wb') as f:
+                dict_writer = csv.DictWriter(f, keys)
+                dict_writer.writeheader()
+                dict_writer.writerows(self.recording_text)
+            self.recording_text = []
+            for image in self.images:
+                image.save_to_disk(self.path + '/Images/%08d' % image.frame_number)
+            self.images = []
         
-
     def record_output(self, world, frame_number):
-            control = world.player.get_control()
-            v = world.player.get_velocity()
-            self.speed = (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))
-            speed_limit = world.player.get_speed_limit()
-            is_at_traffic_light = world.player.is_at_traffic_light()
-            traffic_light = world.player.get_traffic_light()
-            traffic_light_state = world.player.get_traffic_light_state()
-            self.recording_text.append({
-                'frame': frame_number,
-                'Speed': self.speed,
-                'Throttle': control.throttle,
-                'Steer': control.steer,
-                'Brake': control.brake,
-                'Reverse': control.reverse,
-                'Hand brake': control.hand_brake,
-                'Manual': control.manual_gear_shift,
-                'Gear': control.gear,
-                'speed_limit': speed_limit,
-                'at_TL': is_at_traffic_light,
-                'TL': traffic_light,
-                'TL_state': traffic_light_state
-            })
+        #lane_invasion = world.lane_invasion_sensor.lane_invasion
+        #if len(lane_invasion) > 2:
+            #world.lane_invasion_sensor.lane_invasion = ""
+        control = world.player.get_control()
+        v = world.player.get_velocity()
+        speed_limit = world.player.get_speed_limit()
+        is_at_traffic_light = world.player.is_at_traffic_light()
+        traffic_light = world.player.get_traffic_light()
+        traffic_light_state = self.agent.light_state
+        traffic_light_state_2 = world.player.get_traffic_light_state()
+
+        print("TLS_Agent: " + str(traffic_light_state))
+        print("TLS_World: " + str(traffic_light_state_2))
+        self.recording_text.append({
+            'frame': frame_number,
+            'Speed': np.round((3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))/100, 4),
+            'Throttle': control.throttle,
+            'Steer': control.steer,
+            'Brake': control.brake,
+            'Reverse': control.reverse,
+            'Hand brake': control.hand_brake,
+            'Manual': control.manual_gear_shift,
+            'Gear': control.gear,
+            'speed_limit': float(speed_limit)/100,
+            'at_TL': is_at_traffic_light,
+            'TL': traffic_light,
+            'TL_state': traffic_light_state,
+            'fps': self.world.hud.server_fps,
+            'Direction': self.agent._local_planner._target_road_option,
+            #'Lane_Invasion': lane_invasion,
+            #'Collision': self.world.collision_sensor.collision
+        })
+
+
     def record_image(self, image):
             image.convert(cc.Raw)
             self.images.append(image)
-
-    def record_direction(self, world, frame_number):
-        control = world.player.get_control()
-        steering = control.steer
-        direction = self.agent._local_planner._target_road_option
-        if direction == RoadOption.LANEFOLLOW:
-            if self.temp_steering:
-                average_steering = sum(self.temp_steering) / len(self.temp_steering)
-                if average_steering > 0:
-                    d = RoadOption.RIGHT
-                else:
-                    d = RoadOption.LEFT
-                for i in range(len(self.temp_steering)-1):
-                    self.directions.append(d)
-                self.temp_steering=[]
-            else:
-                self.directions.append(direction)
-
-        if direction == RoadOption.LEFT or direction == RoadOption.RIGHT:
-            self.temp_steering.append(steering)                
 
 # ==============================================================================
 # -- game_loop() ---------------------------------------------------------
@@ -852,13 +862,13 @@ def game_loop(args):
         controller = KeyboardControl(world, False)
 
         ### NB: Random start point each time
-        agent = BasicAgent(world.player, autonomous=True)
+        agent = BasicAgent(world.player, autonomous=True, model_path=args.model)
         spawn_point = world.map.get_spawn_points()[0]
         agent.set_destination((spawn_point.location.x,
                                spawn_point.location.y,
                                spawn_point.location.z))
 
-        recorder = Recorder(world, agent)
+        recorder = Recorder(world, agent, args.path)
         world.recorder = recorder
         clock = pygame.time.Clock()
         while True:
@@ -888,8 +898,8 @@ def game_loop(args):
             #control.gear=2
             control.manual_gear_shift = False
 
-            print(control)
-            world.player.apply_control(control)
+            #print(control)
+            #world.player.apply_control(control)
 
     finally:
         if world is not None:
@@ -906,6 +916,14 @@ def game_loop(args):
 def main():
     argparser = argparse.ArgumentParser(
         description='CARLA Manual Control Client')
+    argparser.add_argument(
+        '--path',
+        default='Test_recordings',
+        help='Where to store data')
+    argparser.add_argument(
+        '--model',
+        default=None,
+        help='Where to store data')
     argparser.add_argument(
         '-v', '--verbose',
         action='store_true',

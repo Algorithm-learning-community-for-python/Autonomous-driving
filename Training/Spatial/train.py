@@ -30,10 +30,10 @@ def train_multi():
     print("GRID SEARCH")
     recs = ["/Measurments/modified_recording.csv"] #"/Measurments/recording.csv", modified_recording
     batch_sizes = [16]
-    epochs = [30, 50]
-    nets = [0,1]
+    epochs = [100]
+    nets = [0]
     filtering = [True]
-    learning_rates = [0.0001, 0.00005, 0.0002]
+    learning_rates = [0.0001]#, 0.00005, 0.0002]
     for recording_data in recs:
         for f in filtering:
             for b in batch_sizes:
@@ -56,6 +56,7 @@ def train_multi():
                             trainer.conf.train_conf.batch_size = b
                             trainer.conf.filter_input = f
                             trainer.conf.recordings_path = recording_data
+                            trainer.conf.train_conf.lr = lr
                             trainer.conf.train_conf.optimizer = Adam(lr=lr)
 
                             trainer.initialise_generator_and_net()

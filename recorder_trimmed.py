@@ -211,7 +211,7 @@ class Recorder():
         speed_limit = world.player.get_speed_limit()
         is_at_traffic_light = world.player.is_at_traffic_light()
         traffic_light = world.player.get_traffic_light()
-        traffic_light_state = world.player.get_traffic_light_state()
+        traffic_light_state = self.agent.light_state
         self.recording_text.append({
             'frame': frame_number,
             'Speed': np.round((3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))/100, 4),

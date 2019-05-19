@@ -49,10 +49,10 @@ class Trainer(object):
             optimizer=self.conf.train_conf.optimizer,
         )
         self.history = self.network_handler.model.fit_generator(
-            self.train_generator.generate(),
-            validation_data=self.validation_generator.generate(),
-            steps_per_epoch=self.train_generator.get_number_of_steps_per_epoch(),
-            validation_steps=self.validation_generator.get_number_of_steps_per_epoch(),
+            self.train_generator,
+            validation_data=self.validation_generator,
+            steps_per_epoch=len(self.train_generator),
+            validation_steps=len(self.validation_generator),
             epochs=self.conf.train_conf.epochs,
             callbacks=[
                 ModelCheckpoint(self.checkpoint_path_loss, monitor='loss', save_best_only=True),

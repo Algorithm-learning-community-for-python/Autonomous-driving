@@ -1,20 +1,21 @@
 #pylint: disable=superfluous-parens
 
-from batch_generator import BatchGenerator
+from Spatial.batch_generator import BatchGenerator
 import numpy as np
 from Spatial.data_configuration import Config
 conf = Config()
 conf.train_conf.batch_size = 1
 generator = BatchGenerator(conf)
-g = generator.generate()
+g = BatchGenerator(conf)
 input_measures = [key for key in conf.available_columns if conf.input_data[key]]
 output_measures = [key for key in conf.available_columns if conf.output_data[key]]
 
+print("Length of generator: " + str(len(g)))
 
-for n in g:
-    print("Progress:")
-    print(generator.current_idx)
-    print(generator.folder_index)
+
+for i in range(10):
+    n = g[i]
+    print("Progress: " + str(i))
     bx = n[0]
     by = n[1]
     print(bx)

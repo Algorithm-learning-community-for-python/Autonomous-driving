@@ -132,12 +132,12 @@ def load_network(conf):
     print(x)
 
     # Fully connected 1
-    x = net.dense(x, 512)
+    x = net.dense(x, 512, function="relu")
     x = net.dropout(x, 0.3)
     print(x)
 
     # Fully connected 2
-    x = net.dense(x, 512)
+    x = net.dense(x, 256, function="relu")
     x = net.dropout(x, 0.3)
 
 
@@ -147,12 +147,13 @@ def load_network(conf):
         inputs.append(input_layer)
         x = concatenate([x, input_layer], 1)
 
-    x = net.dense(x, 512)
-    x = net.dropout(x, 0.5)
+    #x = net.dense(x, 512)
+    #x = net.dropout(x, 0.5)
 
-    x = net.dense(x, 128)
-    x = net.dropout(x, 0.5)
+    x = net.dense(x, 128, function="relu")
+    x = net.dropout(x, 0.3) #Changed from 0.5
 
+    x = net.dense(x, 64)
     x = net.dense(x, 32)
 
      #######     OUTPUT DATA     #######

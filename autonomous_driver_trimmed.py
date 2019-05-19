@@ -206,6 +206,7 @@ class Recorder():
         self.agent = agent
         self.temp_steering = []
         self.folder_name = folder_name
+        self.folder = None
         self.path = path
         self.camera_transform = carla.Transform(carla.Location(x=1.6, z=1.7))
         self._sensor = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
@@ -214,8 +215,6 @@ class Recorder():
         bp = bp_library.find('sensor.camera.rgb')
         bp.set_attribute('image_size_x', '320')
         bp.set_attribute('image_size_y', '240')
-        #bp.set_attribute('fov', '120')
-        bp.set_attribute('sensor_tick', '0.20')
 
         self._sensor.append(bp)
         self.sensor = server_world.spawn_actor(
@@ -235,11 +234,11 @@ class Recorder():
 
 
     def stop_recording(self):
-        print(len(self.recording_text))
+        #print(len(self.recording_text))
         if len(self.recording_text) > 0:
             # define the name of the directory to be created
             if self.folder_name:
-                folder = self.folder_name
+                self.folder = self.folder_name
             else:
                 last_folder = 0
                 for folder in os.listdir(self.path):
@@ -247,9 +246,9 @@ class Recorder():
                         continue
                     if int(folder) >= last_folder:
                         last_folder = int(folder)+1
-                folder = last_folder
+                self.folder = last_folder
 
-            self.path = self.path + "/" + str(folder)
+            self.path = self.path + "/" + str(self.folder)
             print(self.path)
 
             try:
@@ -281,7 +280,7 @@ class Recorder():
         speed_limit = world.player.get_speed_limit()
         is_at_traffic_light = world.player.is_at_traffic_light()
         traffic_light = world.player.get_traffic_light()
-        traffic_light_state = world.player.get_traffic_light_state()
+        traffic_light_state = self.agent.light_state
         self.recording_text.append({
             'frame': frame_number,
             'Speed': np.round((3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))/100, 4),
@@ -322,7 +321,7 @@ def game_loop(args):
         hud = HUD()
         world = World(client.get_world(), hud)
 
-        agent = BasicAgent(world.player, autonomous=True)
+        agent = BasicAgent(world.player, autonomous=True, model_path=args.model)
 
         #start_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
         start_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
@@ -370,8 +369,8 @@ def game_loop(args):
                 distance = cur_waypoint.transform.location.distance(destination.location)
                 distance_que.append(math.ceil(distance))
                 print("Distance to goal: " + str(distance))
-                if len(distance_que) > 10:
-                    distance_que = distance_que[-10:]
+                if len(distance_que) > 15:
+                    distance_que = distance_que[-15:]
                     if len(set(distance_que)) == 1:
                         print("Not moving anymore... quiting recording")
                         stop = True
@@ -406,7 +405,9 @@ def game_loop(args):
             world.player.apply_control(control)
 
     finally:
-        recording_to_video(path="Test_recordings")
+        print("EXITING")
+        if recorder.folder:
+            recording_to_video(path="Test_recordings", cur_folder=recorder.folder, file_name=args.model.split(".")[0])
         pygame.quit()
 
 
@@ -421,6 +422,10 @@ def main():
     argparser.add_argument(
         '--path',
         default='Test_recordings',
+        help='Where to store data')
+    argparser.add_argument(
+        '--model',
+        default=None,
         help='Where to store data')
     argparser.add_argument(
         '-v', '--verbose',
