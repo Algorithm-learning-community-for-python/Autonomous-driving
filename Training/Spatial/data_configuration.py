@@ -21,16 +21,19 @@ class Config(object):
             "optimizer": Adam(lr),
             "lr": lr,
             "metrics": None,
-            "epochs": 30,
+            "epochs": 20,
             "batch_size": 8,
         }
         self.train_conf = TrainConf(**args)
         self.train_valid_split = 0.2
         self.bottom_crop = 0 #115
-        self.top_crop = 100
+        self.top_crop = 110
         self.filter_input = True
-        self.filtering_degree = 0.9  # 0 = remove none, 1 = remove all
+        self.filtering_degree = 0.7  # 0 = remove none, 1 = remove all
         self.filter_threshold = 0.1
+
+        self.filtering_degree_speed = 0.80
+        self.filter_threshold_speed = 0.00001
         self.recordings_path = "/Measurments/modified_recording.csv"
         self.folder_index = -1
 
@@ -47,6 +50,7 @@ class Config(object):
             "Gear",
             "TL_state",
             "speed_limit",
+            "ohe_speed_limit",
             "TL",
             "Brake",
             "Speed"
@@ -55,7 +59,8 @@ class Config(object):
         self.input_data = {
             "Direction": True,
             "Speed": True,
-            "speed_limit": True,
+            "speed_limit": False,
+            "ohe_speed_limit": True,
             "TL_state": True,
             "Throttle": False,
             "Reverse": False,
@@ -72,6 +77,7 @@ class Config(object):
             "Direction": False,
             "Speed": False,
             "speed_limit": False,
+            "ohe_speed_limit": False,
             "TL_state": False,
             "Throttle": True,
             "Reverse": False,
@@ -88,7 +94,8 @@ class Config(object):
             "Image": [240-(self.top_crop+self.bottom_crop), 320, 3],
             "Direction": [7],
             "Speed": [1],
-            "speed_limit": [1],
+            "speed_limit": [1], 
+            "ohe_speed_limit": [11],
             "TL_state": [3],
             "Output": 1,
             "Sequence_length": 5,
@@ -123,6 +130,19 @@ class Config(object):
             "Green",
             "Yellow",
             "Red"
+        ]
+        self.sl_categories = [
+            0,
+            0.1,
+            0.2,
+            0.3,
+            0.4,
+            0.5,
+            0.6,
+            0.7,
+            0.8,
+            0.9,
+            1,
         ]
 
         

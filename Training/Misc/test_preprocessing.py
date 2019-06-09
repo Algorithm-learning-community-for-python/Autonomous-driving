@@ -28,8 +28,12 @@ else:
 
 follow_lane = 0
 intersection = 0
+right = 0
+left = 0
+straight = 0
 total_samples = 0
 steerings = []
+directions = []
 for dataframe in recordings:
     for _, row in dataframe.iterrows():
         # Add or remove the current sequence
@@ -42,7 +46,14 @@ for dataframe in recordings:
                     follow = False
         else:
             steerings.append(row["Steer"])
+            directions.append(row["Direction"])
             if row["Direction"]!="RoadOption.LANEFOLLOW" and row["Direction"]!="":
+                if row["Direction"] == "RoadOption.RIGHT": 
+                    right +=1
+                if row["Direction"] == "RoadOption.LEFT":
+                    left +=1
+                if row["Direction"] == "RoadOption.STRAIGHT":
+                    straight +=1
                 follow = False
 
         total_samples += 1
@@ -52,8 +63,14 @@ for dataframe in recordings:
             intersection += 1
 print("BEFORE")
 print("Total samples: " + str(total_samples))
-print("intersections: " + str(intersection))
 print("Follow lane: " + str(follow_lane))
+print("intersections: " + str(intersection))
+print("right: " + str(right))
+print("left: " + str(left))
+print("straight: " + str(straight))
+
+l = len([(s, d) for (s,d) in zip(steerings, directions) if abs(s) < 0.1 and d =="RoadOption.LANEFOLLOW"])
+print("Samples steering less than 0.1 and lanefollow: " + str(l))
 l = len([x for x in steerings if abs(x) > 0.1])
 print("Samples steering more than 0.1: " + str(l))
 l = len([x for x in steerings if abs(x) > 0.4])
@@ -64,6 +81,9 @@ fig1.savefig("before_filtering")
 
 follow_lane = 0
 intersection = 0
+right = 0
+left = 0
+straight = 0
 total_samples = 0
 steerings = []
 for recording in recordings:
@@ -79,7 +99,14 @@ for recording in recordings:
                     follow = False
         else:
             steerings.append(row["Steer"])
+            directions.append(row["Direction"])
             if row["Direction"]!="RoadOption.LANEFOLLOW" and row["Direction"]!="":
+                if row["Direction"] == "RoadOption.RIGHT": 
+                    right +=1
+                if row["Direction"] == "RoadOption.LEFT":
+                    left +=1
+                if row["Direction"] == "RoadOption.STRAIGHT":
+                    straight +=1
                 follow = False
 
         total_samples += 1
@@ -91,8 +118,13 @@ for recording in recordings:
 
 print("AFTER")
 print("Total samples: " + str(total_samples))
-print("intersections: " + str(intersection))
 print("Follow lane: " + str(follow_lane))
+print("intersections: " + str(intersection))
+print("right: " + str(right))
+print("left: " + str(left))
+print("straight: " + str(straight))
+l = len([(s, d) for (s,d) in zip(steerings, directions) if abs(s) < 0.1 and d =="RoadOption.LANEFOLLOW"])
+print("Samples steering less than 0.1 and lanefollow: " + str(l))
 l = len([x for x in steerings if abs(x) > 0.1])
 print("Samples steering more than 0.1: " + str(l))
 l = len([x for x in steerings if abs(x) > 0.4])

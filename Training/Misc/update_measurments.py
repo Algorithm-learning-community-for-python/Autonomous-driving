@@ -1,4 +1,7 @@
 """Updates the measurment file """
+from __future__ import print_function
+
+
 import os
 import pandas as pd
 import numpy as np
@@ -28,11 +31,21 @@ def extend_steering_commands(dataframe):
 def one_hot_encode_fields(df):
     ohe_directions = get_one_hot_encoded(conf.direction_categories, df.Direction)
     ohe_tl_state = get_one_hot_encoded(conf.tl_categories, df.TL_state)
+    ohe_speed_limits = get_one_hot_encoded(conf.sl_categories, df.speed_limit)
+    #print(ohe_directions.shape)
+   # print(ohe_speed_limits.shape)
+    df.loc[:, "ohe_speed_limit"] = None
+    df['ohe_speed_limit'] = df['ohe_speed_limit'].astype(object)
 
     for index, _ in df.iterrows():
         df.at[index, "Direction"] = ohe_directions[index]
         df.at[index, "TL_state"] = ohe_tl_state[index]
-
+        try:
+            df.at[index, "ohe_speed_limit"] = ohe_speed_limits[index]
+        except ValueError as v:
+            print("VALUEERROR" + str(v))
+            print(ohe_speed_limits[index])
+            exit()
 def remove_unused_collums(df):
     input_measures = [
         key for key in conf.available_columns if conf.input_data[key]
@@ -54,11 +67,16 @@ def round_off_values(df, measure, decimals):
     df[measure] = np.round(df[measure], decimals)
 
 
-DATA_PATHS = get_data_paths() + get_data_paths("Validation_data")
-
-for path in DATA_PATHS:
+DATA_PATHS = get_data_paths("Validation_data")
+start_index = 0
+for path in DATA_PATHS[start_index:]:
+    print("\r" + path, end="")
     df = pd.read_csv(path + MEASURMENT_PATH)
+    if df.iloc[0].Steer == 0 and df.iloc[0].Brake == 0 and df.iloc[0].Throttle == 0:
+        df = df.drop(index=0) #remove two first since the car is in the air 
+        df = df.reset_index()    
     df = extend_steering_commands(df)
+    #print(path)
     one_hot_encode_fields(df)
     pad_frame(df)
     round_off_values(df, "Steer", 3)

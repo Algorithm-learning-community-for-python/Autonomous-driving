@@ -87,7 +87,7 @@ import carla
 from carla import ColorConverter as cc
 from agents.navigation.basic_agent import *
 from agents.navigation.local_planner import RoadOption
-
+from agents.tools.misc import is_within_distance_ahead
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
@@ -110,9 +110,10 @@ def get_actor_display_name(actor, truncate=250):
 # ==============================================================================
 
 class World(object):
-    def __init__(self, carla_world, hud, actor_filter):
+    def __init__(self, carla_world, hud, actor_filter, start_waypoint=-1):
         self.world = carla_world
         #carla_world.set_weather(carla.WeatherParameters.CloudyNoon)
+        self.start_waypoint = start_waypoint
 
         self.map = self.world.get_map()
         self.hud = hud
@@ -129,6 +130,7 @@ class World(object):
         self.world.on_tick(hud.on_world_tick)
         self.recording_enabled = False
         self.recording_start = 0
+        
 
     def restart(self):
         # Keep same camera config if the camera manager exists.
@@ -150,7 +152,7 @@ class World(object):
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         print("RESTARTING")
         while self.player is None:
-            spawn_point = self.map.get_spawn_points()[-1]
+            spawn_point = self.map.get_spawn_points()[self.start_waypoint]
             #spawn_points = self.map.get_spawn_points()
             #spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
@@ -809,12 +811,8 @@ class Recorder():
         v = world.player.get_velocity()
         speed_limit = world.player.get_speed_limit()
         is_at_traffic_light = world.player.is_at_traffic_light()
-        traffic_light = world.player.get_traffic_light()
         traffic_light_state = self.agent.light_state
-        traffic_light_state_2 = world.player.get_traffic_light_state()
 
-        print("TLS_Agent: " + str(traffic_light_state))
-        print("TLS_World: " + str(traffic_light_state_2))
         self.recording_text.append({
             'frame': frame_number,
             'Speed': np.round((3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))/100, 4),
@@ -827,7 +825,7 @@ class Recorder():
             'Gear': control.gear,
             'speed_limit': float(speed_limit)/100,
             'at_TL': is_at_traffic_light,
-            'TL': traffic_light,
+            #'TL': traffic_light,
             'TL_state': traffic_light_state,
             'fps': self.world.hud.server_fps,
             'Direction': self.agent._local_planner._target_road_option,
@@ -858,12 +856,13 @@ def game_loop(args):
             pygame.HWSURFACE | pygame.DOUBLEBUF)
 
         hud = HUD(args.width, args.height)
-        world = World(client.get_world(), hud, args.filter)
+        world = World(client.get_world(), hud, args.filter, start_waypoint=args.waypoints[0])
         controller = KeyboardControl(world, False)
 
         ### NB: Random start point each time
+        #args.model= "Training/Spatial/Stored_models/32/Checkpoints/best-val-16-0.058.hdf5"
         agent = BasicAgent(world.player, autonomous=True, model_path=args.model)
-        spawn_point = world.map.get_spawn_points()[0]
+        spawn_point = world.map.get_spawn_points()[args.waypoints[1]]
         agent.set_destination((spawn_point.location.x,
                                spawn_point.location.y,
                                spawn_point.location.z))
@@ -885,12 +884,14 @@ def game_loop(args):
             speed_limit = world.player.get_speed_limit()
             agent._local_planner.set_speed(speed_limit)
             control = agent.run_step(recorder)
+            #print(control)
+
             if control.throttle < 0.5:
                 control.throttle = 0
             else:
                 control.throttle = 1
 
-            if control.brake >0.5:
+            if control.brake > 0.5:
                 control.brake = 1
             else:
                 control.brake = 0
@@ -898,8 +899,7 @@ def game_loop(args):
             #control.gear=2
             control.manual_gear_shift = False
 
-            #print(control)
-            #world.player.apply_control(control)
+            world.player.apply_control(control)
 
     finally:
         if world is not None:
@@ -923,7 +923,11 @@ def main():
     argparser.add_argument(
         '--model',
         default=None,
-        help='Where to store data')
+        help='Where to fetch model')
+    argparser.add_argument(
+        '--waypoints',
+        default=[150, 24], #[-1, 0],
+        help='Waypoint index of where to start and stop')
     argparser.add_argument(
         '-v', '--verbose',
         action='store_true',

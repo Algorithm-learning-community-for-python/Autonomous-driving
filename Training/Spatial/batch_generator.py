@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from keras.utils import Sequence
 from Misc.misc import get_image, get_data_paths
-from Misc.preprocessing import filter_input_based_on_steering
+from Misc.preprocessing import filter_input_based_on_steering, filter_input_based_on_speed_and_tl, filter_corrupt_input
 
 class BatchGenerator(Sequence):
     """ Generator that yields batches of training data concisting of multiple inputs"""
@@ -41,6 +41,7 @@ class BatchGenerator(Sequence):
             x[0].append(self.get_image(row))
             input_measurements = row[self.input_measures]
             output_measurements = row[self.output_measures]
+                
 
             for i, measure in enumerate(self.input_measures):
                 x[i + 1].append(input_measurements[measure])
@@ -70,16 +71,24 @@ class BatchGenerator(Sequence):
         #Filter
         if self.conf.filter_input and data != "Validation_data":
             self.data = filter_input_based_on_steering(self.data, self.conf, temporal=False)
+            self.data = filter_input_based_on_speed_and_tl(self.data, self.conf, temporal=False)
+            self.data = filter_corrupt_input(self.data, self.conf, temporal=False)
 
         for index, row in self.data.iterrows():
-            self.data.at[index, "Direction"] = [int(x) for x in row["Direction"].strip("][").split(".")[:-1]]
-            self.data.at[index, "TL_state"] = [int(x) for x in row["TL_state"].strip("][").split(".")[:-1]]
+            if self.conf.input_data["Direction"]:
+                self.data.at[index, "Direction"] = [int(x) for x in row["Direction"].strip("][").split(".")[:-1]]
+            if self.conf.input_data["TL_state"]:
+                self.data.at[index, "TL_state"] = [int(x) for x in row["TL_state"].strip("][").split(".")[:-1]]
+            if self.conf.input_data["ohe_speed_limit"]:
+                self.data.at[index, "ohe_speed_limit"] = [int(x) for x in row["ohe_speed_limit"].strip("][").split(".")[:-1]]
+
 
     def get_image(self, row):
         """" Returns the image sequence"""
         path = self.data_paths[row["Recording"]] + "/Images/"
         frame = str(row["frame"])
         img = get_image(path, frame)
+
         img = img[..., ::-1]
         img = img[self.conf.top_crop:, :, :]
         return img

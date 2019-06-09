@@ -1,25 +1,46 @@
 #pylint: disable=superfluous-parens
 
-from batch_generator import BatchGenerator
+from Temporal.batch_generator import BatchGenerator
 import numpy as np
-from Misc.data_configuration import Config
+from Temporal.data_configuration import Config
 conf = Config()
+conf.train_conf.batch_size = 3
+conf.filter_input = True
 generator = BatchGenerator(conf)
-g = generator.generate()
-for n in g:
-    #n = g.next()
-    print("Progress:")
-    print(generator.current_idx)
-    print(generator.folder_index)
+g = BatchGenerator(conf)
+input_measures = [key for key in conf.available_columns if conf.input_data[key]]
+output_measures = [key for key in conf.available_columns if conf.output_data[key]]
+
+print("Length of generator: " + str(len(g)))
+
+
+for b in range(len(g)):
+    n = g[b]
     bx = n[0]
     by = n[1]
-    print("Inputs: ")
-    print("Images shape: " + str(bx["input_1"].shape))
-    print("Direction shape: " + str(bx["input_2"].shape))
-    print("Output shape: " + str(by["output"].shape))
+    #print(b)
+    #print(bx)
+    """
+    print("INPUT SAMPLE BATCH")
+    for i in range(conf.input_size_data["Sequence_length"]):
+        print("input_Image "+str(i) + "\n")
+        print(bx["input_Image"+str(i)])
+        print("\n")
+    for measure in input_measures:
+        for i in range(conf.input_size_data["Sequence_length"]):
+            print("input_"+measure+str(i) + "\n")
 
-    print("Direction sample: " + str(bx["input_2"][0]))
-    print("Output sample: " + str(by["output"][0]))
+            print(bx["input_"+measure+str(i)])
+            print("\n")
+
+    print("OUTPUT SAMPLE BATCH")
+
+    for measure in output_measures:
+        #if by["output_"+measure] is None:
+        print("output_"+measure)
+        print(measure + " " + str(by["output_"+measure]) + "\n")
+    
+    """
     raw_input()
 """
     sy = by[0]

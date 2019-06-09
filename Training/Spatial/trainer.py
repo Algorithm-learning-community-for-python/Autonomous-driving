@@ -1,7 +1,8 @@
 """Main module for spatial training"""
 #pylint: disable=superfluous-parens
 import os
-from keras.callbacks import ModelCheckpoint, ProgbarLogger
+import numpy as np
+from keras.callbacks import ModelCheckpoint, ProgbarLogger, EarlyStopping
 from Spatial.Networks.nvidia import load_network
 from Spatial.batch_generator import BatchGenerator
 from Spatial.data_configuration import Config
@@ -19,9 +20,9 @@ class Trainer(object):
         self.folder = None
         self.create_results_folder()
         self.checkpoint_path_loss = "Stored_models/" + \
-            str(self.folder) + "/Checkpoints/best-loss-{epoch:02d}-{loss:.3f}.hdf5"
+            str(self.folder) + "/Checkpoints/train_loss-{epoch:02d}-{loss:.3f}.hdf5"
         self.checkpoint_path_val_loss = "Stored_models/" + \
-            str(self.folder) + "/Checkpoints/best-val-{epoch:02d}-{val_loss:.3f}.hdf5"
+            str(self.folder) + "/Checkpoints/val_loss-{epoch:02d}-{val_loss:.3f}.hdf5"
 
 
     def create_results_folder(self):
@@ -55,8 +56,9 @@ class Trainer(object):
             validation_steps=len(self.validation_generator),
             epochs=self.conf.train_conf.epochs,
             callbacks=[
-                ModelCheckpoint(self.checkpoint_path_loss, monitor='loss', save_best_only=True),
-                ModelCheckpoint(self.checkpoint_path_val_loss, monitor='val_loss', save_best_only=True)
+                ModelCheckpoint(self.checkpoint_path_loss, monitor='loss', save_best_only=True, period=int(np.floor(self.conf.train_conf.epochs/10))),
+                ModelCheckpoint(self.checkpoint_path_val_loss, monitor='val_loss', save_best_only=True),
+                EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1, mode='auto', baseline=None, restore_best_weights=True)
             ],
             use_multiprocessing=True,
             workers=12,

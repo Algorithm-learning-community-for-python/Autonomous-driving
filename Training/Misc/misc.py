@@ -137,6 +137,9 @@ def get_image(path, frame):
     img = cv2.imread(path + file_name)
     if len(img) == 0:
         print("Error fetching image")
+        print(path)
+        print(frame)
+        exit()
     return img
 
 def get_image_name(frame):

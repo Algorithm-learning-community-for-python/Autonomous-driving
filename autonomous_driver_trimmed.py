@@ -25,10 +25,12 @@ import sys
 import weakref
 import csv
 
+
 try:
     import pygame
 except ImportError:
     raise RuntimeError('cannot import pygame, make sure pygame package is installed')
+
 
 try:
     import numpy as np
@@ -60,6 +62,7 @@ from carla import ColorConverter as cc
 from agents.navigation.basic_agent import *
 from agents.navigation.local_planner import RoadOption
 from Misc.recording_to_video import recording_to_video
+from Misc.rate_test_results import rate_recording
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
@@ -82,7 +85,7 @@ def get_actor_display_name(actor, truncate=250):
 # ==============================================================================
 
 class World(object):
-    def __init__(self, carla_world, hud):
+    def __init__(self, carla_world, hud, start_waypoint=-1):
         self.world = carla_world
         self.map = self.world.get_map()
         self.hud = hud
@@ -90,10 +93,56 @@ class World(object):
         self.recorder = None
         self.collision_sensor = None
         self.lane_invasion_sensor = None
+        self.actor_list = []
 
         self._actor_filter = 'vehicle.bmw.grandtourer'
         self.world.on_tick(hud.on_world_tick)
+        self.start_waypoint = start_waypoint
         self.restart()
+
+
+    def spawn_npc(self, client, safe=False, n_vehicles=30):
+        blueprints = self.world.get_blueprint_library().filter("vehicle.*")
+
+        if safe:
+            blueprints = [x for x in blueprints if int(x.get_attribute('number_of_wheels')) == 4]
+            blueprints = [x for x in blueprints if not x.id.endswith('isetta')]
+            blueprints = [x for x in blueprints if not x.id.endswith('carlacola')]
+
+        spawn_points = self.world.get_map().get_spawn_points()
+        number_of_spawn_points = len(spawn_points)
+
+        if n_vehicles < number_of_spawn_points:
+            random.shuffle(spawn_points)
+        elif n_vehicles > number_of_spawn_points:
+            msg = 'requested %d vehicles, but could only find %d spawn points'
+            logging.warning(msg, n_vehicles, number_of_spawn_points)
+            n_vehicles = number_of_spawn_points
+
+        # @todo cannot import these directly.
+        SpawnActor = carla.command.SpawnActor
+        SetAutopilot = carla.command.SetAutopilot
+        FutureActor = carla.command.FutureActor
+
+        batch = []
+        for n, transform in enumerate(spawn_points):
+            if n >= n_vehicles:
+                break
+            blueprint = random.choice(blueprints)
+            if blueprint.has_attribute('color'):
+                color = random.choice(blueprint.get_attribute('color').recommended_values)
+                blueprint.set_attribute('color', color)
+            blueprint.set_attribute('role_name', 'autopilot')
+            batch.append(SpawnActor(blueprint, transform).then(SetAutopilot(FutureActor, True)))
+
+        for response in client.apply_batch_sync(batch):
+            if response.error:
+                logging.error(response.error)
+            else:
+                self.actor_list.append(response.actor_id)
+
+        print('spawned %d vehicles, press Ctrl+C to exit.' % len(self.actor_list))
+
 
     def restart(self):
         # Get a random blueprint.
@@ -115,7 +164,7 @@ class World(object):
                 self.lane_invasion_sensor.sensor.destroy()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         while self.player is None:
-            spawn_point = self.map.get_spawn_points()[-1]
+            spawn_point = self.map.get_spawn_points()[self.start_waypoint]
             #spawn_points = self.map.get_spawn_points()
             #spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
@@ -208,6 +257,8 @@ class Recorder():
         self.folder_name = folder_name
         self.folder = None
         self.path = path
+        self.throttle = None
+        self.brake = None
         self.camera_transform = carla.Transform(carla.Location(x=1.6, z=1.7))
         self._sensor = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
         server_world = world.player.get_world()
@@ -249,26 +300,30 @@ class Recorder():
                 self.folder = last_folder
 
             self.path = self.path + "/" + str(self.folder)
-            print(self.path)
 
             try:
                 os.mkdir(self.path)
                 os.mkdir(self.path + "/Measurments")
                 os.mkdir(self.path + "/Images")
+                print("Successfully created the directory %s " % self.path)
 
             except OSError:
                 print ("Creation of the directory %s failed" % self.path)
-            else:
-                print ("Successfully created the directory %s " % self.path)
-            print(len(self.images))
             keys = self.recording_text[0].keys()
             with open(self.path + '/Measurments/recording.csv', 'wb') as f:
                 dict_writer = csv.DictWriter(f, keys)
                 dict_writer.writeheader()
                 dict_writer.writerows(self.recording_text)
             self.recording_text = []
+            i = 0
+            l = len(self.images)
             for image in self.images:
-                image.save_to_disk(self.path + '/Images/%08d' % image.frame_number)
+                if i % (math.ceil(l/100)) == 0:
+                    print("\r Storing image " + str(i) + " of " + str(l), end="")
+                if i % 4 == 0:
+                    image.save_to_disk(self.path + '/Images/%08d' % image.frame_number)
+                
+                i += 1
             self.images = []
 
     def record_output(self, world, frame_number):
@@ -278,25 +333,35 @@ class Recorder():
         control = world.player.get_control()
         v = world.player.get_velocity()
         speed_limit = world.player.get_speed_limit()
-        is_at_traffic_light = world.player.is_at_traffic_light()
-        traffic_light = world.player.get_traffic_light()
+        if world.player.is_at_traffic_light():
+            is_at_traffic_light = 1
+        else:
+            is_at_traffic_light = 0
+        #old_traffic_light = world.player.get_traffic_light()
         traffic_light_state = self.agent.light_state
+
+        direction = self.agent._local_planner._target_road_option
+        if self.agent._local_planner._look_ahead_road_option != RoadOption.LANEFOLLOW:
+            direction = self.agent._local_planner._look_ahead_road_option
+
         self.recording_text.append({
             'frame': frame_number,
             'Speed': np.round((3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))/100, 4),
             'Throttle': control.throttle,
+            'Predicted_Throttle': self.throttle,
+            'Predicted_Brake': self.brake,
             'Steer': control.steer,
             'Brake': control.brake,
-            'Reverse': control.reverse,
-            'Hand brake': control.hand_brake,
-            'Manual': control.manual_gear_shift,
+            #'Reverse': control.reverse,
+            #'Hand brake': control.hand_brake,
+            #'Manual': control.manual_gear_shift,
             'Gear': control.gear,
             'speed_limit': float(speed_limit)/100,
             'at_TL': is_at_traffic_light,
-            'TL': traffic_light,
+            #'TL': traffic_light,
             'TL_state': traffic_light_state,
             'fps': self.world.hud.server_fps,
-            'Direction': self.agent._local_planner._target_road_option,
+            'Direction': direction,
             'Lane_Invasion': lane_invasion,
             'Collision': self.world.collision_sensor.collision
         })
@@ -315,18 +380,32 @@ def game_loop(args):
     world = None
 
     try:
+        print("COUNTER")
         client = carla.Client(args.host, args.port)
         client.set_timeout(4.0)
-
+        print("COUNTER")
+        
         hud = HUD()
-        world = World(client.get_world(), hud)
+        world = World(client.get_world(), hud, start_waypoint=args.waypoints[0])
 
-        agent = BasicAgent(world.player, autonomous=True, model_path=args.model)
+        print("COUNTER")
+
+        #i = random.randint(0,1)
+        cloudy = 0
+        n_vehicles = 80
+        world.spawn_npc(client, n_vehicles=n_vehicles)
+        print("COUNTER")
+
+        if cloudy:
+            world.world.set_weather(carla.WeatherParameters.CloudyNoon)
+
+        agent = BasicAgent(world.player, autonomous=True, model_path=args.model, model_type=args.model_type)
+        print("COUNTER")
 
         #start_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
         start_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
         #destination = random.choice(world.map.get_spawn_points())
-        destination = world.map.get_spawn_points()[0]
+        destination = world.map.get_spawn_points()[args.waypoints[1]]
         agent.set_destination((destination.location.x,
                                destination.location.y,
                                destination.location.z))
@@ -361,20 +440,20 @@ def game_loop(args):
             counter += 1
             fps_que.append(world.hud.server_fps)
 
-            if counter % 100 == 0:
+            if counter % 200 == 0:
                 print("step: " + str(counter))
-                print("average fps: " + str(sum(fps_que)/len(fps_que)))
+                print("average fps= " + str(sum(fps_que)/len(fps_que)))
                 fps_que = []
                 cur_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
                 distance = cur_waypoint.transform.location.distance(destination.location)
                 distance_que.append(math.ceil(distance))
-                print("Distance to goal: " + str(distance))
+                print("Distance to goal= " + str(distance))
                 if len(distance_que) > 15:
                     distance_que = distance_que[-15:]
                     if len(set(distance_que)) == 1:
                         print("Not moving anymore... quiting recording")
                         stop = True
-
+                    
             if stop:
                 if recorder.sensor is not None:
                     recorder.sensor.destroy()
@@ -384,30 +463,90 @@ def game_loop(args):
                     world.lane_invasion_sensor.sensor.destroy()
                 if world is not None:
                     world.player.destroy()
-                print("Storing images and measurments...")
-                recorder.stop_recording()
+                    print('\ndestroying %d actors' % len(world.actor_list))
+                    client.apply_batch([carla.command.DestroyActor(x) for x in world.actor_list])
+                        
+                if counter < 50:
+                    print("Didn't get far enough, not storing recording")
+                else:
+                    print("Storing images and measurments...")
+                    recorder.stop_recording()
                 return
 
 
             speed_limit = world.player.get_speed_limit()
             agent._local_planner.set_speed(speed_limit)
             control = agent.run_step(recorder)
-            if control.throttle < 0.5:
-                control.throttle = 0
-            else:
-                control.throttle = 1
+            recorder.throttle = control.throttle
+            recorder.brake = control.brake
+            #print(control.brake)
+            throttle = control.throttle
+            brake = control.brake
+            if control.brake < 0.1:
+                brake = 0.0
 
-            if control.brake >0.5:
-                control.brake = 1
-            else:
-                control.brake = 0
+            if control.throttle > brake:
+                brake = 0.0
+
+            #if control.throttle < 0.5:
+            #    control.throttle = 0
+            #else: #if control.throttle > 1:
+            #    control.throttle = 1
+            
+            v = world.player.get_velocity()
+            speed = 3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)
+            #if speed < 0.01 and control.brake < 0.95:
+            #    brake = 0.0
+            control.brake = brake
+
+            #if speed < 0.5:
+            #    if control.brake > 0.9:# and throttle < 0.5:
+            #        control.brake = 1
+            #    else:
+            #        control.brake = 0
+                
+            #if speed < 30:
+            #if control.brake > 0.5:
+            #    control.brake = 1
+            #else:
+            #    control.brake = 0
+            #else:
+            #    if control.brake > 0.3:
+            #        control.brake = 1
+            #    else:
+            #        control.brake = 0
+
             
             world.player.apply_control(control)
-
+    except IOError as (errno, strerror):
+        print("Error in main loop: error({0}): {1}".format(errno, strerror))
+    except NameError as n:
+        print("Error in main loop.")
+        print(n)
+    except AttributeError as a:
+        print("Error in main loop.")
+        print(a)
+    except SyntaxError as s:
+        print("Error in main loop.")
+        print(s)
+        exit()
+    except IndexError as i:
+        print("Error in main loop.")
+        print(i)
+        exit()
+    except:
+        print("Unexpected error:", sys.exc_info()[0])
+    
     finally:
         print("EXITING")
         if recorder.folder:
-            recording_to_video(path="Test_recordings", cur_folder=recorder.folder, file_name=args.model.split(".")[0])
+            if args.model == None:
+                args.model = "./Training/Temporal/Current_model/" + os.listdir("./Training/Spatial/Current_model/")[0]
+                file_name = str(counter)+"-" + args.model.split(".")[0] + "." + args.model.split(".")[1]
+            else:
+                file_name = str(counter)+"-" + args.model.split(".")[0] + "." +  args.model.split(".")[1]
+            recording_to_video(path="Test_recordings", cur_folder=recorder.folder, file_name=file_name)
+            rate_recording(path="Test_recordings", cur_folder=recorder.folder, file_name=file_name)
         pygame.quit()
 
 
@@ -427,6 +566,14 @@ def main():
         '--model',
         default=None,
         help='Where to store data')
+    argparser.add_argument(
+        '--model_type',
+        default="Spatiotemporal",
+        help='Which modeltype to use (spatial, temporal, spatiotemporal)')
+    argparser.add_argument(
+        '--waypoints',
+        default=[-1, 0], #[-1, 0],
+        help='Waypoint index of where to start and stop')
     argparser.add_argument(
         '-v', '--verbose',
         action='store_true',

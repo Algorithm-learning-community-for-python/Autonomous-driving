@@ -130,6 +130,49 @@ class World(object):
         self.world.on_tick(hud.on_world_tick)
         self.recording_enabled = False
         self.recording_start = 0
+        self.actor_list = []
+
+    def spawn_npc(self, client, safe=False, n_vehicles=30):
+        blueprints = self.world.get_blueprint_library().filter("vehicle.*")
+
+        if safe:
+            blueprints = [x for x in blueprints if int(x.get_attribute('number_of_wheels')) == 4]
+            blueprints = [x for x in blueprints if not x.id.endswith('isetta')]
+            blueprints = [x for x in blueprints if not x.id.endswith('carlacola')]
+
+        spawn_points = self.world.get_map().get_spawn_points()
+        number_of_spawn_points = len(spawn_points)
+
+        if n_vehicles < number_of_spawn_points:
+            random.shuffle(spawn_points)
+        elif n_vehicles > number_of_spawn_points:
+            msg = 'requested %d vehicles, but could only find %d spawn points'
+            logging.warning(msg, n_vehicles, number_of_spawn_points)
+            n_vehicles = number_of_spawn_points
+
+        # @todo cannot import these directly.
+        SpawnActor = carla.command.SpawnActor
+        SetAutopilot = carla.command.SetAutopilot
+        FutureActor = carla.command.FutureActor
+
+        batch = []
+        for n, transform in enumerate(spawn_points):
+            if n >= n_vehicles:
+                break
+            blueprint = random.choice(blueprints)
+            if blueprint.has_attribute('color'):
+                color = random.choice(blueprint.get_attribute('color').recommended_values)
+                blueprint.set_attribute('color', color)
+            blueprint.set_attribute('role_name', 'autopilot')
+            batch.append(SpawnActor(blueprint, transform).then(SetAutopilot(FutureActor, True)))
+
+        for response in client.apply_batch_sync(batch):
+            if response.error:
+                logging.error(response.error)
+            else:
+                self.actor_list.append(response.actor_id)
+
+        print('spawned %d vehicles, press Ctrl+C to exit.' % len(self.actor_list))
 
     def restart(self):
         # Keep same camera config if the camera manager exists.
@@ -150,9 +193,9 @@ class World(object):
             self.destroy()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         while self.player is None:
-            #spawn_point = self.map.get_spawn_points()[-1]
-            spawn_points = self.map.get_spawn_points()
-            spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
+            spawn_point = self.map.get_spawn_points()[150]
+            #spawn_points = self.map.get_spawn_points()
+            #spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
@@ -752,14 +795,14 @@ class Recorder():
             folder = folder
         else:
             last_folder = 0
-            for folder in os.listdir('Training_data'):
+            for folder in os.listdir('Training_data_testing'):
                 if folder == ".DS_Store" or folder == "store.h5":
                     continue
                 if int(folder) >= last_folder:
                     last_folder = int(folder)+1
             folder = last_folder 
 
-        self.path = "Training_data/" + str(folder)
+        self.path = "Training_data_testing/" + str(folder)
 
         try:  
             os.mkdir(self.path)
@@ -897,9 +940,10 @@ def game_loop(args):
         hud = HUD(args.width, args.height)
         world = World(client.get_world(), hud, args.filter)
         controller = KeyboardControl(world, False)
+        world.spawn_npc(client, n_vehicles=80)
 
         agent = BasicAgent(world.player)
-        spawn_point = world.map.get_spawn_points()[0]
+        spawn_point = world.map.get_spawn_points()[24]
         agent.set_destination((spawn_point.location.x,
                                spawn_point.location.y,
                                spawn_point.location.z))
@@ -909,7 +953,7 @@ def game_loop(args):
 
         clock = pygame.time.Clock()
         # Start controller straight away
-        world.camera_manager.toggle_recording()
+        #world.camera_manager.toggle_recording()
 
         while True:
             if controller.parse_events(client, world, clock, recorder):
@@ -932,7 +976,7 @@ def game_loop(args):
             speed_limit = world.player.get_speed_limit()
             agent._local_planner.set_speed(speed_limit)
 
-            control = agent.run_step()
+            control = agent.run_step(recorder)
             control.manual_gear_shift = False
             world.player.apply_control(control)
 

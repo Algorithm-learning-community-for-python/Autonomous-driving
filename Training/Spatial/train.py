@@ -4,7 +4,13 @@
 import argparse
 from keras.optimizers import Adam
 from Spatial.trainer import Trainer
-from Spatial.Networks.network import load_network
+from Spatial.Networks.network import load_network as load_network
+from Spatial.Networks.nvidia import load_network as load_nvidia
+from Spatial.Networks.nvidiaa_v1 import load_network as load_nvidiaa_v1
+from Spatial.Networks.network_v2 import load_network as load_network_v2
+from Spatial.Networks.xception import load_network as load_xception
+
+
 def train_single():
     #lr = 0.0001
     #e = 10
@@ -29,41 +35,62 @@ def train_single():
 def train_multi():
     print("GRID SEARCH")
     recs = ["/Measurments/modified_recording.csv"] #"/Measurments/recording.csv", modified_recording
-    batch_sizes = [16]
-    epochs = [100]
-    nets = [0]
+    batch_sizes = [16] #[8, 16, 32]
+    epochs = [30]
+    nets = [1]
+    sigmoid = [False]#, True]
     filtering = [True]
-    learning_rates = [0.0001]#, 0.00005, 0.0002]
+    learning_rates = [0.00012]  #[0.00001, 0.0001, 0.001]#, 0.00005, 0.0002]
     for recording_data in recs:
-        for f in filtering:
-            for b in batch_sizes:
-                for e in epochs:
-                    for lr in learning_rates:
-                        for n in nets:
-                                
-                            print("##########################################################################")
-                            print("########################  NEW TRAINING   #################################")
-                            print("##########################################################################")
-                            print("Training with: ")
-                            print("lr = " + str(lr))
-                            print("B = " + str(b))
-                            print("E = " + str(e))
-                            print("Net= " + str(n))
-                            trainer = Trainer()
+        for s in sigmoid:
+            for f in filtering:
+                for b in batch_sizes:
+                    for e in epochs:
+                        for lr in learning_rates:
+                            for n in nets:
+                                    
+                                print("##########################################################################")
+                                print("########################  NEW TRAINING   #################################")
+                                print("##########################################################################")
+                                print("Training with: ")
+                                print("lr = " + str(lr))
+                                print("B = " + str(b))
+                                print("E = " + str(e))
+                                print("Net = " + str(n))
+                                trainer = Trainer()
 
 
-                            trainer.conf.train_conf.epochs = e
-                            trainer.conf.train_conf.batch_size = b
-                            trainer.conf.filter_input = f
-                            trainer.conf.recordings_path = recording_data
-                            trainer.conf.train_conf.lr = lr
-                            trainer.conf.train_conf.optimizer = Adam(lr=lr)
+                                trainer.conf.train_conf.epochs = e
+                                trainer.conf.train_conf.batch_size = b
+                                trainer.conf.filter_input = f
+                                trainer.conf.recordings_path = recording_data
+                                trainer.conf.train_conf.lr = lr
+                                trainer.conf.train_conf.optimizer = Adam(lr=lr)
+                                if s:
+                                    trainer.conf.loss_functions = {
+                                        "output_Throttle": "mse", #Might be better with binary_crossentropy
+                                        "output_Brake": "binary_crossentropy",
+                                        "output_Steer": "mse",
+                                    }
+                                    trainer.conf.activation_functions = {
+                                        "output_Throttle": None, #Might be better with binary_crossentropy
+                                        "output_Brake": "sigmoid",
+                                        "output_Steer": None,
+                                    }
 
-                            trainer.initialise_generator_and_net()
-                            if n == 0:
-                                trainer.network_handler = load_network(trainer.conf)
-                            trainer.train()
-                            trainer.save()
+                                trainer.initialise_generator_and_net()
+                                if n == 0:
+                                    trainer.network_handler = load_nvidia(trainer.conf)
+                                if n == 1:
+                                    trainer.network_handler = load_nvidiaa_v1(trainer.conf)
+                                if n == 2:
+                                    trainer.network_handler = load_network(trainer.conf)
+                                if n == 3:
+                                    trainer.network_handler = load_network_v2(trainer.conf)
+                                if n == 4:
+                                    trainer.network_handler = load_xception(trainer.conf)
+                                trainer.train()
+                                trainer.save()
 
 def main():
     argparser = argparse.ArgumentParser(

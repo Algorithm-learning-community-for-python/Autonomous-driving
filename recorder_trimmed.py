@@ -85,9 +85,53 @@ class World(object):
         self.hud = hud
         self.player = None
         self.recorder = None
+        self.actor_list = []
+
         self._actor_filter = 'vehicle.bmw.grandtourer'
         self.world.on_tick(hud.on_world_tick)
         self.restart()
+
+    def spawn_npc(self, client, safe=False, n_vehicles=30):
+        blueprints = self.world.get_blueprint_library().filter("vehicle.*")
+
+        if safe:
+            blueprints = [x for x in blueprints if int(x.get_attribute('number_of_wheels')) == 4]
+            blueprints = [x for x in blueprints if not x.id.endswith('isetta')]
+            blueprints = [x for x in blueprints if not x.id.endswith('carlacola')]
+
+        spawn_points = self.world.get_map().get_spawn_points()
+        number_of_spawn_points = len(spawn_points)
+
+        if n_vehicles < number_of_spawn_points:
+            random.shuffle(spawn_points)
+        elif n_vehicles > number_of_spawn_points:
+            msg = 'requested %d vehicles, but could only find %d spawn points'
+            logging.warning(msg, n_vehicles, number_of_spawn_points)
+            n_vehicles = number_of_spawn_points
+
+        # @todo cannot import these directly.
+        SpawnActor = carla.command.SpawnActor
+        SetAutopilot = carla.command.SetAutopilot
+        FutureActor = carla.command.FutureActor
+
+        batch = []
+        for n, transform in enumerate(spawn_points):
+            if n >= n_vehicles:
+                break
+            blueprint = random.choice(blueprints)
+            if blueprint.has_attribute('color'):
+                color = random.choice(blueprint.get_attribute('color').recommended_values)
+                blueprint.set_attribute('color', color)
+            blueprint.set_attribute('role_name', 'autopilot')
+            batch.append(SpawnActor(blueprint, transform).then(SetAutopilot(FutureActor, True)))
+
+        for response in client.apply_batch_sync(batch):
+            if response.error:
+                logging.error(response.error)
+            else:
+                self.actor_list.append(response.actor_id)
+
+        print('spawned %d vehicles, press Ctrl+C to exit.' % len(self.actor_list))
 
     def restart(self):
         # Get a random blueprint.
@@ -201,16 +245,24 @@ class Recorder():
                 dict_writer.writeheader()
                 dict_writer.writerows(self.recording_text)
             self.recording_text = []
+            i = 0
+            l = len(self.images)
             for image in self.images:
+                if i % (math.ceil(l/100)) == 0:
+                    print("\r Storing image " + str(i) + " of " + str(l), end="")
                 image.save_to_disk(self.path + '/Images/%08d' % image.frame_number)
+                
+                i += 1
             self.images = []
 
     def record_output(self, world, frame_number):
         control = world.player.get_control()
         v = world.player.get_velocity()
         speed_limit = world.player.get_speed_limit()
-        is_at_traffic_light = world.player.is_at_traffic_light()
-        traffic_light = world.player.get_traffic_light()
+        if world.player.is_at_traffic_light():
+            is_at_traffic_light = 1
+        else:
+            is_at_traffic_light = 0
         traffic_light_state = self.agent.light_state
         self.recording_text.append({
             'frame': frame_number,
@@ -224,7 +276,7 @@ class Recorder():
             'Gear': control.gear,
             'speed_limit': float(speed_limit)/100,
             'at_TL': is_at_traffic_light,
-            'TL': traffic_light,
+            #'TL': traffic_light,
             'TL_state': traffic_light_state,
             'fps': self.world.hud.server_fps,
             'Direction': self.agent._local_planner._target_road_option
@@ -250,7 +302,12 @@ def game_loop(args):
         hud = HUD()
         world = World(client.get_world(), hud)
 
-        #world.world.set_weather(carla.WeatherParameters.CloudyNoon)
+        n_vehicles = random.randint(1,2) * 80
+
+        world.spawn_npc(client, n_vehicles=n_vehicles)
+        i = random.randint(0,1)
+        if i == 1:
+            world.world.set_weather(carla.WeatherParameters.CloudyNoon)
 
         agent = BasicAgent(world.player)
 
@@ -284,6 +341,8 @@ def game_loop(args):
                     recorder.sensor.destroy()
                 if world is not None:
                     world.player.destroy()
+                    print('\ndestroying %d actors' % len(world.actor_list))
+                    client.apply_batch([carla.command.DestroyActor(x) for x in world.actor_list])
                 print("Storing images and measurments...")
                 recorder.stop_recording()
                 return
@@ -294,16 +353,22 @@ def game_loop(args):
 
             if counter % 100 == 0:
                 print("step: " + str(counter))
-                print("average fps: " + str(sum(fps_que)/len(fps_que)))
+                print("average fps= " + str(sum(fps_que)/len(fps_que)))
                 fps_que = []
                 cur_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
                 distance = cur_waypoint.transform.location.distance(destination.location)
                 distance_que.append(math.ceil(distance))
-                print("Distance to goal: " + str(distance))
+                print("Distance to goal= " + str(distance))
                 if len(distance_que) > 15:
                     distance_que = distance_que[-15:]
                     if len(set(distance_que)) == 1:
                         print("Not moving anymore... quiting recording")
+                        if recorder.sensor is not None:
+                            recorder.sensor.destroy()
+                        if world is not None:
+                            world.player.destroy()
+                            print('\ndestroying %d actors' % len(world.actor_list))
+                            client.apply_batch([carla.command.DestroyActor(x) for x in world.actor_list])
                         return
 
             speed_limit = world.player.get_speed_limit()

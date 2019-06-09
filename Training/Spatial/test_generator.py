@@ -5,7 +5,8 @@ import numpy as np
 from Spatial.data_configuration import Config
 conf = Config()
 conf.train_conf.batch_size = 1
-generator = BatchGenerator(conf)
+
+#generator = BatchGenerator(conf)
 g = BatchGenerator(conf)
 input_measures = [key for key in conf.available_columns if conf.input_data[key]]
 output_measures = [key for key in conf.available_columns if conf.output_data[key]]
@@ -13,26 +14,29 @@ output_measures = [key for key in conf.available_columns if conf.output_data[key
 print("Length of generator: " + str(len(g)))
 
 
-for i in range(10):
+for i in range(75000, len( g)):
     n = g[i]
-    print("Progress: " + str(i))
+    #sprint("Progress: " + str(i))
     bx = n[0]
     by = n[1]
-    print(bx)
-    """
+    
     print("INPUT SAMPLE BATCH")
-    print(bx)
+    #print(bx)
     for measure in input_measures:
-        print("inpu_"+measure)
-        print(measure + " " + str(bx["input_"+measure]))
+        if bx["input_"+measure] is None:
+            print("input_"+measure)
+
+            print(measure + " " + str(len(bx["input_"+measure])))
 
     print("OUTPUT SAMPLE BATCH")
 
     for measure in output_measures:
-        print("output_"+measure)
-        print(measure + " " + str(by["output_"+measure]))
+        if by["output_"+measure] is None:
+            print("output_"+measure)
+            print(measure + " " + str(len(by["output_"+measure])))
     """
-    raw_input()
+    """
+    #raw_input()
 """
     sy = by[0]
     for sx in bx:

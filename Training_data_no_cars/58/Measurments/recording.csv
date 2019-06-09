@@ -1,0 +1,6 @@
+Throttle,Reverse,at_TL,frame,Manual,Hand brake,Steer,Direction,Gear,speed_limit,TL_state,Brake,fps,Speed
+1.0,False,0,1507,False,False,-2.616843812575098e-05,RoadOption.RIGHT,0,0.3,Green,0.0,60.975608825683594,0.2673
+1.0,False,0,1518,False,False,-0.00017212785314768553,RoadOption.RIGHT,0,0.3,Green,0.0,55.5555534362793,0.2664
+1.0,False,0,1529,False,False,0.05690392851829529,RoadOption.RIGHT,2,0.3,Green,0.0,51.020408630371094,0.2829
+0.0,False,0,1540,False,False,0.03259793296456337,RoadOption.RIGHT,2,0.3,Green,0.0,51.28205490112305,0.3162
+0.0,False,0,1551,False,False,0.1940782517194748,RoadOption.RIGHT,2,0.3,Green,0.0,60.975608825683594,0.3243
