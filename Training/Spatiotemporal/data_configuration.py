@@ -15,29 +15,32 @@ class TrainConf:
 class Config(object):
     """ Contains settings used for Training and configuration """
     def __init__(self):
-        lr = 0.0001
+        lr = 0.00012
         args = {
             "loss": "mse",
             "optimizer": Adam(lr),
             "lr": lr,
             "metrics": None,
             "epochs": 20,
-            "batch_size": 8,
+            "batch_size": 16,
         }
         self.train_conf = TrainConf(**args)
+        self.model_type = "Spatiotemporal"
         self.train_valid_split = 0.2
         self.bottom_crop = 0 #115
         self.top_crop = 110
-        self.filter_input = False
-        self.filtering_degree = 0.7  # 0 = remove none, 1 = remove all
+        self.filter_input = True
+        self.filtering_degree = 0.3  # 0 = remove none, 1 = remove all
         self.filter_threshold = 0.1
 
         self.filtering_degree_speed = 0.80
         self.filter_threshold_speed = 0.00001
         self.recordings_path = "/Measurments/modified_recording.csv"
         self.folder_index = -1
-
-        self.step_size = 5
+        self.add_noise = False
+        self.skip_steps = 1
+        self.step_size_training = 1
+        self.step_size_testing = 1
         self.available_columns = [
             "Throttle",
             "Reverse",
@@ -115,7 +118,7 @@ class Config(object):
             "output_Brake": None,
             "output_Steer": None,
         }
-        self.Sequence_length = 5
+
         self.direction_categories = [
             "RoadOption.VOID",
             "RoadOption.LEFT",

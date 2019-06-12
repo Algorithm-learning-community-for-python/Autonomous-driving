@@ -39,8 +39,6 @@ class BatchGenerator(Sequence):
 
         for i in range(len(self.input_measures)):
             measurments.append([])
-            for b in range(self.batch_size):
-                measurments[i].append([])
         y = []
         for i in range(len(self.output_measures)):
             y.append([])
@@ -55,15 +53,16 @@ class BatchGenerator(Sequence):
                 row = sequence.iloc[j, :]
                 #print(row.frame)
                 images[b].append(self.get_image(row))
-                input_measurements = row[self.input_measures]
-                for i, measure in enumerate(self.input_measures):
-                    if measure == "Speed":
-                        measurments[i][b].append([input_measurements[measure]])
-                    else:
-                        measurments[i][b].append(input_measurements[measure])
             
             row = sequence.iloc[-1, :]
+            input_measurements = row[self.input_measures]
             output_measurements = row[self.output_measures]
+            for i, measure in enumerate(self.input_measures):
+                #if measure == "Speed":
+                #    measurments[i].append([input_measurements[measure]])
+                #else:
+                measurments[i].append(input_measurements[measure])
+
             for i, measure in enumerate(self.output_measures):
                 y[i].append(output_measurements[measure])
             cur_idx += 1

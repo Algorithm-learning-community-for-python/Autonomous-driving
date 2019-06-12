@@ -10,6 +10,8 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import OneHotEncoder
 import numpy as np
 import pandas as pd
+import cv2
+import os
 
 class BatchGenerator(Sequence):
     """ Generator that yields batches of training data concisting of multiple inputs"""
@@ -19,6 +21,7 @@ class BatchGenerator(Sequence):
         self.batch_size = self.conf.train_conf.batch_size
         self.seq_len = self.conf.input_size_data["Sequence_length"]
         self.data = None
+        self.data_type = data
         self.data_paths = get_data_paths(data)
         self.input_measures = [
             key for key in self.conf.available_columns if self.conf.input_data[key]
@@ -73,7 +76,7 @@ class BatchGenerator(Sequence):
 
     def get_measurements_recordings(self, data):
         self.data = []
-        for i, path in enumerate(self.data_paths):
+        for i, path in enumerate(self.data_paths):#[:3]):
             df = pd.read_csv(path + self.conf.recordings_path)
             df["Recording"] = i 
             for i in range(len(df)):
@@ -102,6 +105,8 @@ class BatchGenerator(Sequence):
 
         img = img[..., ::-1]
         img = img[self.conf.top_crop:, :, :]
+        if self.conf.add_noise and self.data_type == "Training_data":
+            img = augment_image(img)
         return img
 
 
@@ -222,3 +227,50 @@ def filter_corrupt_input(sequences, conf, temporal):
     print("\n")
     print("\n")
     return sequences
+
+def augment_image(image):
+    noise_types = ["gauss", "s&p", "poisson", "speckle", "none", "none", "none", "none", ]
+    choice = np.random.choice(noise_types)
+    if choice =="none":
+        return image
+    else:
+        return noisy(choice, image)
+
+def noisy(noise_typ,image):
+    if noise_typ == "gauss":
+        row,col,ch= image.shape
+        mean = 0
+        var = 0.1
+        sigma = var**0.5
+        gauss = np.random.normal(mean,sigma,(row,col,ch))
+        gauss = gauss.reshape(row,col,ch)
+        noisy = image + gauss
+        return noisy
+    elif noise_typ == "s&p":
+        row,col,ch = image.shape
+        s_vs_p = 0.5
+        amount = 0.004
+        out = np.copy(image)
+        # Salt mode
+        num_salt = np.ceil(amount * image.size * s_vs_p)
+        coords = [np.random.randint(0, i - 1, int(num_salt))
+                for i in image.shape]
+        out[coords] = 1
+
+        # Pepper mode
+        num_pepper = np.ceil(amount* image.size * (1. - s_vs_p))
+        coords = [np.random.randint(0, i - 1, int(num_pepper))
+                for i in image.shape]
+        out[coords] = 0
+        return out
+    elif noise_typ == "poisson":
+        vals = len(np.unique(image))
+        vals = 2 ** np.ceil(np.log2(vals))
+        noisy = np.random.poisson(image * vals) / float(vals)
+        return noisy
+    elif noise_typ =="speckle":
+        row,col,ch = image.shape
+        gauss = np.random.randn(row,col,ch)
+        gauss = gauss.reshape(row,col,ch)        
+        noisy = image + image * gauss
+        return noisy

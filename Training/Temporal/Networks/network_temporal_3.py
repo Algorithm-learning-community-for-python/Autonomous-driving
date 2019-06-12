@@ -160,7 +160,7 @@ def load_network(conf):
 
     x = net.lstm(x, 64, return_sequences=False)
 
-    x = net.dense(x, 32, td=False)
+    x = net.dense(x, 10, td=False)
 
     outputs = []
     for measure in output_measures:

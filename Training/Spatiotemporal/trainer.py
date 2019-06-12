@@ -8,7 +8,7 @@ from Spatiotemporal.batch_generator import BatchGenerator
 from Spatiotemporal.data_configuration import Config
 from Misc.misc import save_results
 from Misc.misc import create_new_folder
-
+from Spatiotemporal.stop_training_on_request import StopTrainingOnInput
 class Trainer(object):
     """ Main class for training a new model """
     def __init__(self):
@@ -58,7 +58,8 @@ class Trainer(object):
             callbacks=[
                 ModelCheckpoint(self.checkpoint_path_loss, monitor='loss', save_best_only=True, period=int(np.floor(self.conf.train_conf.epochs/10))),
                 ModelCheckpoint(self.checkpoint_path_val_loss, monitor='val_loss', save_best_only=True),
-                EarlyStopping(monitor='val_loss', min_delta=0, patience=7, verbose=1, mode='auto', baseline=None, restore_best_weights=True)
+                EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=1, mode='auto', baseline=None, restore_best_weights=True),
+                StopTrainingOnInput()
             ],
             use_multiprocessing=True,
             workers=12,

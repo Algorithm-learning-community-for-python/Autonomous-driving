@@ -1,25 +1,45 @@
-from autonomous_driver_trimmed import game_loop
-from Misc.misc import get_data_paths
+""" Module that tests multiple models at multiple tracks """
+#pylint: disable=invalid-name
 import os
 import argparse
+from autonomous_driver_trimmed import game_loop
 
-def get_paths(path, split_on, sort_idx):
-    paths=[]
-    for folder in os.listdir(path):
-        if folder == ".DS_Store" or folder == "store.h5":
+# Which model architecture to use
+model_type = "Temporal"
+models_path = "Training/" + model_type + "/Stored_models/"
+
+# Which models to test
+all_models = False
+chosen_folders = [15]
+
+# Which checkpoints to test
+best_checkpoint_only = True
+threshold_epoch = 0 # Only applicable if best_checkpoint_only is false
+
+# Define which tracks to test
+# Town 1 has 4 possible tracks
+# Town 2 has 3 possible tracks
+town_one = True
+town_two = False
+tracks_town_1 = [0]
+tracks_town_2 = [0, 1, 2]
+
+
+def get_paths(dir_path, split_on, sort_idx):
+    """ Returns a sorted list of paths to the folders located in dir_path"""
+    paths = []
+    for f in os.listdir(dir_path):
+        if f == ".DS_Store" or f == "store.h5":
             continue
-        paths.append(path + "/" + folder)
+        paths.append(dir_path + "/" + f)
     paths.sort(key=lambda a: int(a.split(split_on)[sort_idx]))
     return paths
 
 
+# Fetch the models to test
 
-all_models = False
-only_best = True
 best_loss_models = []
 best_val_models = []
-model_type = "Spatiotemporal"
-models_path = "Training/" + model_type + "/Stored_models/"
 if all_models:
     data_paths = get_paths(models_path, "/", -1)
     for path in data_paths:
@@ -28,24 +48,24 @@ if all_models:
         best_val = True
         checkpoints.reverse()
         for checkpoint in checkpoints:
-            #if best_loss and "loss" in checkpoint:
-            #    best_loss = False
-            #    best_loss_models.append(checkpoint)
             if best_val and "val" in checkpoint:
                 best_val = False
                 best_val_models.append(checkpoint)
 else:
-    for cur_folder in range(5,6):
-        checkpoints = get_paths(models_path + str(cur_folder) + "/Checkpoints", "-", 1)
+    for folder in chosen_folders:
+        checkpoints = get_paths(models_path + str(folder) + "/Checkpoints", "-", 1)
         checkpoints.reverse()
         for checkpoint in checkpoints:
-            #if "loss" in checkpoint:
-            #    best_loss_models.append(checkpoint)
             if "val" in checkpoint:
-                best_val_models.append(checkpoint)
-                if only_best:
+                if best_checkpoint_only:
+                    best_val_models.append(checkpoint)
                     break
+                else:
+                    if int(checkpoint.split("-")[1]) > threshold_epoch:
+                        best_val_models.append(checkpoint)
 
+
+# Define arguments for the carla client
 
 argparser = argparse.ArgumentParser(
     description='CARLA Manual Control Client')
@@ -70,45 +90,32 @@ argparser.add_argument(
     type=int,
     help='TCP port to listen to (default: 2000)')
 
+# Test the models
+
 waypoints_town_1 = [
-    [150,24],
+    [150, 24],
     [200, 70],
     [49, 209],
     [60, 27],
 ]
-
 waypoints_town_2 = [
     [30, 81],
     [12, 6],
     [46, 45]
 ]
+if town_one:
+    for model in best_val_models:
+        for track in tracks_town_1:
+            args = argparser.parse_args()
+            args.model = model
+            args.model_type = model_type
+            args.waypoints = waypoints_town_1[track]
+            game_loop(args)
 
-waypoints = waypoints_town_1
-
-"""
-for model in best_loss_models:
-    args = argparser.parse_args()
-    args.model = model
-    game_loop(args)
-for model in best_val_models:
-    args = argparser.parse_args()
-    args.model = model
-    args.waypoints =[-1,0]
-    game_loop(args)
-"""
-for model in best_val_models:
-    for wps in waypoints_town_1:
-        args = argparser.parse_args()
-        args.model = model #"Training/Spatial/Stored_models/6/Checkpoints/train_loss-06-0.097.hdf5" #model
-        args.model_type = model_type
-        args.waypoints = wps
-        game_loop(args)
-
-"""
-for wps in waypoints_town_2:
-    args = argparser.parse_args()
-    args.model = model #"Training/Spatial/Stored_models/6/Checkpoints/train_loss-06-0.097.hdf5" #model
-    args.waypoints = wps
-    game_loop(args)
-
-"""
+if town_two:
+    for model in best_val_models:
+        for track in tracks_town_2:
+            args = argparser.parse_args()
+            args.model = model
+            args.waypoints = waypoints_town_2[track]
+            game_loop(args)

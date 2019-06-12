@@ -2,13 +2,16 @@ carla
 examples
 util
 Training_data
+Training_data_no_cars
+Training_data_testing
 Validation_data
 python_api.md
 *.pyc
-
+logs
 Stored_models
 *.png
 *.h5
+*.hdf5
 *.DS_Store
 .idea/
 venv/

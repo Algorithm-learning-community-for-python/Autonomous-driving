@@ -25,6 +25,7 @@ class Config(object):
             "batch_size": 8,
         }
         self.train_conf = TrainConf(**args)
+        self.model_type = "Spatial"
         self.train_valid_split = 0.2
         self.bottom_crop = 0 #115
         self.top_crop = 110
@@ -36,7 +37,9 @@ class Config(object):
         self.filter_threshold_speed = 0.00001
         self.recordings_path = "/Measurments/modified_recording.csv"
         self.folder_index = -1
+        self.add_noise = False
 
+        self.skip_steps = 1
 
         self.available_columns = [
             "Throttle",

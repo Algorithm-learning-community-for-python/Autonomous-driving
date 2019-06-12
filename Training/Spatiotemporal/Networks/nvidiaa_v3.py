@@ -24,7 +24,7 @@ class NetworkHandler(object):
         """ Creates a full conv block """
         x = self.conv(x, filters, kernel_size, stride, padding)
         x = self.batch_norm(x)
-        x = self.dropout(x, rate=0.0)
+        x = self.dropout(x, rate=0.5)
         x = self.activation(x)
         return x
 
@@ -100,20 +100,20 @@ def load_network(conf):
         x = Lambda(hsv_convert)(x)
 
         # CONV 1
-        x = net.conv(x, 24, 5, 2, activation="relu")
+        x = net.conv_block(x, 24, 5, 2)
         #x = net.conv(x, 24, 5, 2, activation="relu")
 
         # CONV 2
-        x = net.conv(x, 36, 5, 2, activation="relu")
+        x = net.conv_block(x, 36, 5, 2)
 
         # CONV 3
-        x = net.conv(x, 48, 5, 2, activation="relu")
+        x = net.conv_block(x, 48, 5, 2)
 
         # CONV 4
-        x = net.conv(x, 64, 3, 1, activation="relu")
+        x = net.conv_block(x, 64, 3, 1)
 
         # CONV 4
-        x = net.conv(x, 64, 3, 1, activation="relu")
+        x = net.conv_block(x, 64, 3, 1)
 
         #x = net.dropout(x, rate=0.5)
         

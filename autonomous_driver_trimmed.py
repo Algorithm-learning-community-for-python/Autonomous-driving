@@ -146,12 +146,15 @@ class World(object):
 
     def restart(self):
         # Get a random blueprint.
+        print("bluepriont")
         blueprint = random.choice(self.world.get_blueprint_library().filter(self._actor_filter))
         blueprint.set_attribute('role_name', 'hero')
         if blueprint.has_attribute('color'):
             color = random.choice(blueprint.get_attribute('color').recommended_values)
             blueprint.set_attribute('color', color)
         # Spawn the player.
+        print("spawn")
+
         if self.player is not None:
             spawn_point = self.player.get_transform()
             spawn_point.location.z += 2.0
@@ -164,6 +167,7 @@ class World(object):
                 self.lane_invasion_sensor.sensor.destroy()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         while self.player is None:
+            print("try spawning")
             spawn_point = self.map.get_spawn_points()[self.start_waypoint]
             #spawn_points = self.map.get_spawn_points()
             #spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
@@ -534,8 +538,13 @@ def game_loop(args):
         print("Error in main loop.")
         print(i)
         exit()
+    except ValueError as v:
+        print("Error in main loop.")
+        print(v)
+        exit()
     except:
         print("Unexpected error:", sys.exc_info()[0])
+        exit()
     
     finally:
         print("EXITING")

@@ -1,6 +1,7 @@
 """NETWORK HANDLER AND CREATER"""
 #pylint: disable=invalid-name
 #pylint: disable=superfluous-parens
+from keras.applications.mobilenet_v2 import MobileNetV2
 
 from keras.models import Model
 from keras.layers import Input, concatenate
@@ -77,7 +78,9 @@ class NetworkHandler(object):
         self.dense_layers += 1
         x = Dense(output_size, activation=function, name=name)(x)
         return x
-
+def Normalise(x):
+    return (x/255)-0.5
+    
 def hsv_convert(x):
     """ Converts input from rgb to hsv in the range 0-1 """
     import tensorflow as tf
@@ -96,29 +99,15 @@ def load_network(conf):
         x = Input(shape=input_size_data["Image"], name="input_Image" + str(i))
         inputs.append(x)
 
-        # RGB TO HSV
-        x = Lambda(hsv_convert)(x)
-
-        # CONV 1
-        x = net.conv(x, 24, 5, 2, activation="relu")
-        #x = net.conv(x, 24, 5, 2, activation="relu")
-
-        # CONV 2
-        x = net.conv(x, 36, 5, 2, activation="relu")
-
-        # CONV 3
-        x = net.conv(x, 48, 5, 2, activation="relu")
-
-        # CONV 4
-        x = net.conv(x, 64, 3, 1, activation="relu")
-
-        # CONV 4
-        x = net.conv(x, 64, 3, 1, activation="relu")
-
-        #x = net.dropout(x, rate=0.5)
-        
+        x = Lambda(Normalise)(x)
+        base = MobileNetV2(include_top=False, weights='imagenet', input_tensor=x, pooling=None)
+        for j, layer in enumerate(base.layers):
+            if j == 0:
+                continue
+            else:
+                layer.name = layer.name + str(i)        
         # FLATTEN
-        x = Flatten()(x)
+        x = Flatten()(base.output)
 
 
         #######     INPUT DATA     #######

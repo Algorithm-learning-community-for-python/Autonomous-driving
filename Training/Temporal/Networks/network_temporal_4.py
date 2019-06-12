@@ -158,7 +158,7 @@ def load_network(conf):
         inputs.append(input_layer)
         x = concatenate([x, input_layer])
 
-    x = net.lstm(x, 64, return_sequences=False)
+    x = net.lstm(x, 64, return_sequences=False, dropout=0.5)
 
     x = net.dense(x, 32, td=False)
 

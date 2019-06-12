@@ -1,12 +1,23 @@
 """ Module to train a neural network """
 #pylint: disable=superfluous-parens
-
+#Todo: remove
+import warnings
+warnings.filterwarnings("ignore")
 import argparse
 from keras.optimizers import Adam
 from Spatiotemporal.trainer import Trainer
 from Spatiotemporal.Networks.network import load_network as load_network
 from Spatiotemporal.Networks.nvidia import load_network as load_nvidia
 from Spatiotemporal.Networks.nvidiaa_v1 import load_network as load_nvidiaa_v1
+from Spatiotemporal.Networks.nvidiaa_v2 import load_network as load_nvidiaa_v2
+from Spatiotemporal.Networks.nvidiaa_v3 import load_network as load_nvidiaa_v3
+from Spatiotemporal.Networks.nvidiaa_v4 import load_network as load_nvidiaa_v4
+#from Spatiotemporal.Networks.nvidiaa_v5 import load_network as load_nvidiaa_v5
+
+
+
+
+
 from Spatiotemporal.Networks.network_v2 import load_network as load_network_v2
 from Spatiotemporal.Networks.xception import load_network as load_xception
 
@@ -36,11 +47,30 @@ def train_multi():
     print("GRID SEARCH")
     recs = ["/Measurments/modified_recording.csv"] #"/Measurments/recording.csv", modified_recording
     batch_sizes = [16] #[8, 16, 32]
-    epochs = [40]
-    nets = [1]
+    epochs = [20]
+    nets = [4]
     sigmoid = [False]#, True]
+    sequence_lengths = [5, 7]
     filtering = [True]
     learning_rates = [0.00012]  #[0.00001, 0.0001, 0.001]#, 0.00005, 0.0002]
+    """
+    #Test with noise
+    trainer = Trainer()
+    trainer.conf.add_noise = True
+    trainer.initialise_generator_and_net()
+    trainer.network_handler = load_nvidiaa_v1(trainer.conf)
+    trainer.train()
+    trainer.save()
+    # Test sequence lengths
+    for l in sequence_lengths:
+        trainer = Trainer()
+        trainer.conf.input_size_data["Sequence_length"] = l
+        trainer.initialise_generator_and_net()
+        trainer.network_handler = load_nvidiaa_v1(trainer.conf)
+        trainer.train()
+        trainer.save()"""
+
+    #Test networks
     for recording_data in recs:
         for s in sigmoid:
             for f in filtering:
@@ -84,11 +114,14 @@ def train_multi():
                                 if n == 1:
                                     trainer.network_handler = load_nvidiaa_v1(trainer.conf)
                                 if n == 2:
-                                    trainer.network_handler = load_network(trainer.conf)
+                                    trainer.network_handler = load_nvidiaa_v2(trainer.conf)
                                 if n == 3:
-                                    trainer.network_handler = load_network_v2(trainer.conf)
+                                    trainer.network_handler = load_nvidiaa_v3(trainer.conf)
                                 if n == 4:
-                                    trainer.network_handler = load_xception(trainer.conf)
+                                    trainer.network_handler = load_nvidiaa_v4(trainer.conf)
+                                #if n == 5:
+                                #    trainer.network_handler = load_nvidiaa_v5(trainer.conf)
+
                                 trainer.train()
                                 trainer.save()
 

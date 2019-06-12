@@ -4,7 +4,12 @@
 import argparse
 from keras.optimizers import Adam
 from Temporal.trainer import Trainer
-from Temporal.Networks.network_temporal import load_network as load_network
+from Temporal.Networks.network_temporal import load_network as load_network0
+from Temporal.Networks.network_temporal_1 import load_network as load_network1
+from Temporal.Networks.network_temporal_2 import load_network as load_network2
+from Temporal.Networks.network_temporal_3 import load_network as load_network3
+from Temporal.Networks.network_temporal_4 import load_network as load_network4
+from Temporal.Networks.network_temporal_5 import load_network as load_network5
 
 
 
@@ -16,11 +21,13 @@ def train_single():
     print("##########################################################################")
     print("########################  NEW TRAINING   #################################")
     print("##########################################################################")
-    """print("Training with: ")
+    """
+    print("Training with: ")
     print("lr = " + str(lr))
     print("B = " + str(b))
     print("E = " + str(e))
-    print("F = " + str(f))"""
+    print("F = " + str(f))
+    """
     trainer = Trainer()
     #trainer.conf.train_conf.epochs = e
     #trainer.conf.train_conf.batch_size = b
@@ -33,11 +40,11 @@ def train_multi():
     print("GRID SEARCH")
     recs = ["/Measurments/modified_recording.csv"] #"/Measurments/recording.csv", modified_recording
     batch_sizes = [16] #[8, 16, 32]
-    epochs = [30]
-    nets = [1]
+    epochs = [3]
+    nets = [0, 1, 2, 3, 4, 5]
     sigmoid = [False]#, True]
     filtering = [True]
-    learning_rates = [0.001, 0.0005, 0.0001]  #[0.00001, 0.0001, 0.001]#, 0.00005, 0.0002]
+    learning_rates = [0.00012]  #[0.00001, 0.0001, 0.001]#, 0.00005, 0.0002]
     for recording_data in recs:
         for s in sigmoid:
             for f in filtering:
@@ -76,6 +83,19 @@ def train_multi():
                                     }
 
                                 trainer.initialise_generator_and_net()
+                                if n == 0:
+                                    trainer.network_handler = load_network0(trainer.conf)
+                                elif n == 1:
+                                    trainer.network_handler = load_network1(trainer.conf)
+                                elif n == 2:
+                                    trainer.network_handler = load_network2(trainer.conf)
+                                elif n == 3:
+                                    trainer.network_handler = load_network3(trainer.conf)
+                                elif n == 4:
+                                    trainer.network_handler = load_network4(trainer.conf)
+                                elif n == 5:
+                                    trainer.network_handler = load_network5(trainer.conf)
+
                                 trainer.train()
                                 trainer.save()
 

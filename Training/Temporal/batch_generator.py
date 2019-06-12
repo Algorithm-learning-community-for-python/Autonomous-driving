@@ -1,15 +1,12 @@
 """Temporal generator"""
-from math import ceil
 import random
 import pandas as pd
 import numpy as np
 from keras.utils import Sequence
-from Misc.misc import get_image, get_data_paths
-import random
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import OneHotEncoder
-import numpy as np
-import pandas as pd
+from Misc.misc import get_image, get_data_paths
+
 
 class BatchGenerator(Sequence):
     """ Generator that yields batches of training data concisting of multiple inputs"""
@@ -33,12 +30,14 @@ class BatchGenerator(Sequence):
 
     def __getitem__(self, idx):
         images = []
-        measurments =  []
+        measurments = []
         for b in range(self.batch_size):
             images.append([])
 
         for i in range(len(self.input_measures)):
             measurments.append([])
+            for b in range(self.batch_size):
+                measurments[i].append([])
         y = []
         for i in range(len(self.output_measures)):
             y.append([])
@@ -53,16 +52,15 @@ class BatchGenerator(Sequence):
                 row = sequence.iloc[j, :]
                 #print(row.frame)
                 images[b].append(self.get_image(row))
+                input_measurements = row[self.input_measures]
+                for i, measure in enumerate(self.input_measures):
+                    if measure == "Speed":
+                        measurments[i][b].append([input_measurements[measure]])
+                    else:
+                        measurments[i][b].append(input_measurements[measure])
             
             row = sequence.iloc[-1, :]
-            input_measurements = row[self.input_measures]
             output_measurements = row[self.output_measures]
-            for i, measure in enumerate(self.input_measures):
-                #if measure == "Speed":
-                #    measurments[i].append([input_measurements[measure]])
-                #else:
-                measurments[i].append(input_measurements[measure])
-
             for i, measure in enumerate(self.output_measures):
                 y[i].append(output_measurements[measure])
             cur_idx += 1
@@ -79,18 +77,25 @@ class BatchGenerator(Sequence):
 
     def get_measurements_recordings(self, data):
         self.data = []
-        for i, path in enumerate(self.data_paths): #[:int(len(self.data_paths)/10)]):
+        # Use subset avoid using all the data
+        if data == "Validation_data":
+            percentage_of_training_data = 0.1
+            skip_steps = 1
+        else:
+            skip_steps = self.conf.skip_steps
+            percentage_of_training_data = 0.01
+        subset = int(len(self.data_paths)*percentage_of_training_data)
+        for r, path in enumerate(self.data_paths):#[:subset]):
             df = pd.read_csv(path + self.conf.recordings_path)
-            df["Recording"] = i 
-            for i in range(len(df)):
+            df["Recording"] = r
+            for i in range(0,len(df), skip_steps):
                 if i + self.seq_len < len(df):
                     self.data.append(df.iloc[i:i + self.seq_len, :].copy())
-
         #Filter
         if self.conf.filter_input and data != "Validation_data":
-            self.data = filter_input_based_on_steering(self.data, self.conf, temporal=True)
-            self.data = filter_input_based_on_speed_and_tl(self.data, self.conf, temporal=True)
-            self.data = filter_corrupt_input(self.data, self.conf, temporal=True)
+            self.data = filter_input_based_on_steering(self.data, self.conf)
+            self.data = filter_input_based_on_speed_and_tl(self.data, self.conf)
+            self.data = filter_corrupt_input(self.data)
         for i, sequence in enumerate(self.data):
             for index, row in sequence.iterrows():
                 if self.conf.input_data["Direction"]:
@@ -126,7 +131,7 @@ def get_one_hot_encoded(categories, values):
     onehot_encoded = onehot_encoder.transform(integer_encoded)
     return onehot_encoded
 
-def filter_input_based_on_steering(sequences, conf, temporal):
+def filter_input_based_on_steering(sequences, conf):
     """ Filters dataframe consisting of sequences based on steering """
     print("\n")
     print("\n")
@@ -176,7 +181,7 @@ def filter_input_based_on_steering(sequences, conf, temporal):
     return sequences
 
 
-def filter_input_based_on_speed_and_tl(sequences, conf, temporal):
+def filter_input_based_on_speed_and_tl(sequences, conf):
     """ Filters dataframe consisting of sequences based on steering """
     print("\n")
     print("\n")
@@ -208,7 +213,7 @@ def filter_input_based_on_speed_and_tl(sequences, conf, temporal):
     print("\n")
     return sequences
 
-def filter_corrupt_input(sequences, conf, temporal):
+def filter_corrupt_input(sequences):
     """ Filters dataframe consisting of sequences based on steering """
     print("\n")
     print("\n")

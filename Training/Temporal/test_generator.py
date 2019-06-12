@@ -4,7 +4,7 @@ from Temporal.batch_generator import BatchGenerator
 import numpy as np
 from Temporal.data_configuration import Config
 conf = Config()
-conf.train_conf.batch_size = 3
+conf.train_conf.batch_size = 2
 conf.filter_input = True
 generator = BatchGenerator(conf)
 g = BatchGenerator(conf)
@@ -19,7 +19,8 @@ for b in range(len(g)):
     bx = n[0]
     by = n[1]
     #print(b)
-    #print(bx)
+    print(bx)
+    print(by)
     """
     print("INPUT SAMPLE BATCH")
     for i in range(conf.input_size_data["Sequence_length"]):
