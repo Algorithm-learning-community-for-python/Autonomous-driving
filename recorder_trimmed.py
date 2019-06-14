@@ -85,6 +85,7 @@ class World(object):
         self.hud = hud
         self.player = None
         self.recorder = None
+        self.collision_sensor = None
         self.actor_list = []
 
         self._actor_filter = 'vehicle.bmw.grandtourer'
@@ -146,14 +147,16 @@ class World(object):
             spawn_point.location.z += 2.0
             spawn_point.rotation.roll = 0.0
             spawn_point.rotation.pitch = 0.0
-            if self.player is not None:
-                self.player.destroy()
+            self.player.destroy()
+            if self.collision_sensor is not None:
+                self.collision_sensor.sensor.destroy()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         while self.player is None:
-            #spawn_point = self.map.get_spawn_points()[-1]
-            spawn_points = self.map.get_spawn_points()
-            spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
+            spawn_point = self.map.get_spawn_points()[142]
+            #spawn_points = self.map.get_spawn_points()
+            #spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
+        self.collision_sensor = CollisionSensor(self.player)
 
 
 # ==============================================================================
@@ -169,6 +172,36 @@ class HUD(object):
         self._server_clock.tick()
         self.server_fps = self._server_clock.get_fps()
 
+
+# ==============================================================================
+# -- CollisionSensor -----------------------------------------------------------
+# ==============================================================================
+
+
+class CollisionSensor(object):
+    def __init__(self, parent_actor):
+        self.sensor = None
+        self.collision = False
+        self._parent = parent_actor
+        world = self._parent.get_world()
+        bp = world.get_blueprint_library().find('sensor.other.collision')
+        self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)
+        weak_self = weakref.ref(self)
+        self.sensor.listen(lambda event: CollisionSensor._on_collision(weak_self, event))
+
+    @staticmethod
+    def _on_collision(weak_self, event):
+        self = weak_self()
+        if not self:
+            return
+        actor_type = get_actor_display_name(event.other_actor)
+        impulse = event.normal_impulse
+        intensity = math.sqrt(impulse.x ** 2 + impulse.y ** 2 + impulse.z ** 2)
+        print('Collision with %r' % actor_type)
+        print("with intensity: "+ str(intensity))
+        self.collision = True
+
+
 # ==============================================================================
 # -- Recorder() ---------------------------------------------------------------
 # ==============================================================================
@@ -183,7 +216,7 @@ class Recorder():
         self.temp_steering = []
         self.folder_name = folder_name
         self.path = path
-        
+        self.controller_updates = 0
 
 
         self.camera_transform = carla.Transform(carla.Location(x=1.6, z=1.7))
@@ -191,10 +224,9 @@ class Recorder():
         server_world = world.player.get_world()
         bp_library = server_world.get_blueprint_library()
         bp = bp_library.find('sensor.camera.rgb')
-        bp.set_attribute('image_size_x', '320')
-        bp.set_attribute('image_size_y', '240')
-        #bp.set_attribute('fov', '120')
-        bp.set_attribute('sensor_tick', '0.20')
+        bp.set_attribute('image_size_x', '460')
+        bp.set_attribute('image_size_y', '345')
+        bp.set_attribute('sensor_tick', '0.10')
 
         self._sensor.append(bp)
         self.sensor = server_world.spawn_actor(
@@ -208,9 +240,8 @@ class Recorder():
     @staticmethod
     def record(weak_self, image):
         self = weak_self()
-        if self.agent._local_planner._target_road_option != None:
-            self.record_output(self.world, image.frame_number)
-            self.record_image(image)
+        self.record_output(self.world, image.frame_number)
+        self.record_image(image)
 
 
     def stop_recording(self):
@@ -258,12 +289,17 @@ class Recorder():
     def record_output(self, world, frame_number):
         control = world.player.get_control()
         v = world.player.get_velocity()
-        speed_limit = world.player.get_speed_limit()
+        speed_limit = world.player.get_speed_limit() - 10
         if world.player.is_at_traffic_light():
             is_at_traffic_light = 1
         else:
             is_at_traffic_light = 0
         traffic_light_state = self.agent.light_state
+        if self.agent._local_planner._target_road_option is None:
+            direction = RoadOption.VOID
+        else:
+            direction = self.agent._local_planner._target_road_option 
+
         self.recording_text.append({
             'frame': frame_number,
             'Speed': np.round((3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))/100, 4),
@@ -279,7 +315,9 @@ class Recorder():
             #'TL': traffic_light,
             'TL_state': traffic_light_state,
             'fps': self.world.hud.server_fps,
-            'Direction': self.agent._local_planner._target_road_option
+            'Direction': direction,
+            'controller_updates': self.controller_updates,
+            "time(s)": pygame.time.get_ticks() / 1000 
         })
 
     def record_image(self, image):
@@ -294,7 +332,7 @@ def game_loop(args):
     pygame.init()
     pygame.font.init()
     world = None
-
+    
     try:
         client = carla.Client(args.host, args.port)
         client.set_timeout(4.0)
@@ -302,17 +340,43 @@ def game_loop(args):
         hud = HUD()
         world = World(client.get_world(), hud)
 
-        n_vehicles = random.randint(1,2) * 80
+        n_vehicles = random.randint(1, 3) * 80
 
         world.spawn_npc(client, n_vehicles=n_vehicles)
-        i = random.randint(0,1)
-        if i == 1:
-            world.world.set_weather(carla.WeatherParameters.CloudyNoon)
+
+        train_weathers = [
+            carla.WeatherParameters.ClearNoon,
+            carla.WeatherParameters.CloudyNoon,
+            carla.WeatherParameters.WetNoon,
+            carla.WeatherParameters.SoftRainNoon,
+
+
+            carla.WeatherParameters.ClearSunset,
+            carla.WeatherParameters.CloudySunset,
+            carla.WeatherParameters.WetSunset,
+            carla.WeatherParameters.SoftRainSunset,
+
+        ]
+
+        test_weathers = [
+            carla.WeatherParameters.WetCloudyNoon,
+            carla.WeatherParameters.MidRainyNoon,
+            carla.WeatherParameters.HardRainNoon,
+
+            carla.WeatherParameters.WetCloudySunset,
+            carla.WeatherParameters.HardRainSunset,
+            carla.WeatherParameters.MidRainSunset,
+        ]
+        random_weather = 1
+
+        if random_weather == 1:
+            world.world.set_weather(np.random.choice(train_weathers))
 
         agent = BasicAgent(world.player)
 
         start_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
-        destination = random.choice(world.map.get_spawn_points())
+        #destination = random.choice(world.map.get_spawn_points())
+        destination = world.map.get_spawn_points()[162] #55
 
         agent.set_destination((destination.location.x,
                                destination.location.y,
@@ -326,54 +390,65 @@ def game_loop(args):
         world.recorder = recorder
         counter = 0
         fps_que =[]
-        distance_que = []
         stop = False
-        
+        target_reached = False
+        not_moving_count = 0
+        previous_distance = 0
         while True:
             # as soon as the server is ready continue!
             if not world.world.wait_for_tick(10.0):
                 continue
 
+            if world.collision_sensor.collision:
+                print("Stopping recording session due to collision...")
+                stop = True
+
             # Stop recorder when target destination has been reached
             if len(agent._local_planner._waypoints_queue) == 0:
                 print("Target Reached, stopping recording session...")
+                target_reached = True
+                stop = True
+            
+            
+            counter += 1
+
+            if counter % 200 == 0:
+                print("step: " + str(counter))
+                cur_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
+                distance = cur_waypoint.transform.location.distance(destination.location)
+                print("Distance to goal= " + str(distance))
+                if abs(distance - previous_distance) < 2:
+                    not_moving_count += 1
+                else:
+                    not_moving_count = 0
+                previous_distance = distance
+                if not_moving_count > 20:
+                    print("Not moving anymore... quiting recording")
+                    stop = True
+
+            # Stop recorder when target destination has been reached
+            if stop:
                 if recorder.sensor is not None:
                     recorder.sensor.destroy()
+                if world.collision_sensor.sensor is not None:
+                    world.collision_sensor.sensor.destroy()
                 if world is not None:
                     world.player.destroy()
                     print('\ndestroying %d actors' % len(world.actor_list))
                     client.apply_batch([carla.command.DestroyActor(x) for x in world.actor_list])
-                print("Storing images and measurments...")
-                recorder.stop_recording()
+                
+                if counter < 50:
+                    print("Didn't get far enough, not storing recording")
+                elif not target_reached:
+                    print("Didn't reach the target, not storing recording")
+                else:
+                    print("Storing images and measurments...")
+                    recorder.stop_recording()
                 return
-            counter += 1
-            fps_que.append(world.hud.server_fps)
-            #if counter % 10==0:
-            #   print('Server:  % 16.0f FPS' % world.hud.server_fps)
 
-            if counter % 100 == 0:
-                print("step: " + str(counter))
-                print("average fps= " + str(sum(fps_que)/len(fps_que)))
-                fps_que = []
-                cur_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
-                distance = cur_waypoint.transform.location.distance(destination.location)
-                distance_que.append(math.ceil(distance))
-                print("Distance to goal= " + str(distance))
-                if len(distance_que) > 15:
-                    distance_que = distance_que[-15:]
-                    if len(set(distance_que)) == 1:
-                        print("Not moving anymore... quiting recording")
-                        if recorder.sensor is not None:
-                            recorder.sensor.destroy()
-                        if world is not None:
-                            world.player.destroy()
-                            print('\ndestroying %d actors' % len(world.actor_list))
-                            client.apply_batch([carla.command.DestroyActor(x) for x in world.actor_list])
-                        return
-
-            speed_limit = world.player.get_speed_limit()
+            speed_limit = world.player.get_speed_limit()-10
             agent._local_planner.set_speed(speed_limit)
-
+            recorder.controller_updates += 1
             control = agent.run_step(recorder)
             control.manual_gear_shift = False
             world.player.apply_control(control)
@@ -392,7 +467,7 @@ def main():
         description='CARLA Manual Control Client')
     argparser.add_argument(
         '--path',
-        default='Validation_data',
+        default='Training_data_temp',
         help='Where to store data')
     argparser.add_argument(
         '-v', '--verbose',

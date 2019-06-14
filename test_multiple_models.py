@@ -10,7 +10,7 @@ models_path = "Training/" + model_type + "/Stored_models/"
 
 # Which models to test
 all_models = False
-chosen_folders = [15]
+chosen_folders = [1,2,3,4,5,6]
 
 # Which checkpoints to test
 best_checkpoint_only = True

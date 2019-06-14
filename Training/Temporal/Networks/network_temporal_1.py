@@ -139,7 +139,7 @@ def load_network(conf):
     # CONV 3
     x = net.conv(x, 48, 5, 2, activation="relu")
     x = net.batch_norm(x)
-
+    x = net.dropout(x, 0.5)
     # CONV 4
     x = net.conv(x, 64, 3, 1, activation="relu")
     x = net.batch_norm(x)

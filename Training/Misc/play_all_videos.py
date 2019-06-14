@@ -3,18 +3,18 @@
 import cv2 
 import numpy as np 
 import os
-   
+from Misc.misc import get_data_paths
 MEASURMENT_PATH = "/Measurments/recording.csv"
-DATA_PATHS = []
-#PATH = '../../Training_data'
+PATH = '../../Training_data'
 #PATH = '../../Validation_data'
-PATH = '../../Test_recordings'
+#PATH = '../../Test_recordings'
+p = get_data_paths("Training_data_temp")
+#for folder in os.listdir(PATH):
+#    DATA_PATHS.append(PATH + "/" + folder)
 
-for folder in os.listdir(PATH):
-    DATA_PATHS.append(PATH + "/" + folder)
 
-
-for path in DATA_PATHS:
+for path in p:
+    print(path)
     for filename in os.listdir(path):
         #print(filename)
         if ".avi" in filename:
@@ -31,19 +31,19 @@ for path in DATA_PATHS:
                 
                 # Capture frame-by-frame
                 ret, frame = cap.read()
-                cap.set(3, 320)
-                cap.set(4, 140)
+                cap.set(3, 460)
+                cap.set(4, 345)
                 if ret == True:
                 
                     # Display the resulting frame
 
                     cv2.namedWindow('Frame',cv2.WINDOW_NORMAL)
-                    cv2.resizeWindow('Frame', 640,280)
+                    cv2.resizeWindow('Frame', 920,690)
 
                     cv2.imshow('Frame', frame)
 
                     # Press Q on keyboard to  exit
-                    if cv2.waitKey(25) & 0xFF == ord('q'):
+                    if cv2.waitKey(10) & 0xFF == ord('q'):
                         break
                 
                 # Break the loop

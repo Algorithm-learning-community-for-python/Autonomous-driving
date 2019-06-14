@@ -15,22 +15,22 @@ class TrainConf:
 class Config(object):
     """ Contains settings used for Training and configuration """
     def __init__(self):
-        lr = 0.0001
+        lr = 0.00012
         args = {
             "loss": "mse",
             "optimizer": Adam(lr),
             "lr": lr,
             "metrics": None,
             "epochs": 20,
-            "batch_size": 8,
+            "batch_size": 16,
         }
         self.train_conf = TrainConf(**args)
         self.model_type = "Spatial"
         self.train_valid_split = 0.2
-        self.bottom_crop = 0 #115
-        self.top_crop = 110
+        self.bottom_crop = 0
+        self.top_crop = 165
         self.filter_input = True
-        self.filtering_degree = 0.7  # 0 = remove none, 1 = remove all
+        self.filtering_degree = 0.8  # 0 = remove none, 1 = remove all
         self.filter_threshold = 0.1
 
         self.filtering_degree_speed = 0.80
@@ -94,7 +94,7 @@ class Config(object):
             "Brake": True,
         }
         self.input_size_data = {
-            "Image": [240-(self.top_crop+self.bottom_crop), 320, 3],
+            "Image": [345-(self.top_crop+self.bottom_crop), 460, 3],
             "Direction": [7],
             "Speed": [1],
             "speed_limit": [1], 

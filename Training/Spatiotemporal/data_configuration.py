@@ -27,18 +27,18 @@ class Config(object):
         self.train_conf = TrainConf(**args)
         self.model_type = "Spatiotemporal"
         self.train_valid_split = 0.2
-        self.bottom_crop = 0 #115
-        self.top_crop = 110
+        self.bottom_crop = 0
+        self.top_crop = 165
         self.filter_input = True
         self.filtering_degree = 0.3  # 0 = remove none, 1 = remove all
         self.filter_threshold = 0.1
 
-        self.filtering_degree_speed = 0.80
+        self.filtering_degree_speed = 0.70
         self.filter_threshold_speed = 0.00001
         self.recordings_path = "/Measurments/modified_recording.csv"
         self.folder_index = -1
         self.add_noise = False
-        self.skip_steps = 1
+        self.skip_steps = 2
         self.step_size_training = 1
         self.step_size_testing = 1
         self.available_columns = [
@@ -94,7 +94,7 @@ class Config(object):
             "Brake": True,
         }
         self.input_size_data = {
-            "Image": [240-(self.top_crop+self.bottom_crop), 320, 3],
+            "Image": [345-(self.top_crop+self.bottom_crop), 460, 3],
             "Direction": [7],
             "Speed": [1],
             "speed_limit": [1], 

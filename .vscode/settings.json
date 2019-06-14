@@ -2,11 +2,9 @@
     "python.pythonPath": "/home/xr-10/anaconda3/envs/carla_driver/bin/python",
     "files.watcherExclude": {
         "**/Training_data/**": true,
-        "**/Training_data_no_cars/**": true,
-        "**/Training_data_testing/**": true,
+        "**/Training_data_temp/**": true,
         "**/Test_recordings/**": true,
         "**/Validation_data/**": true,
-        "**/Validation_data_no_cars/**": true,
         "**/Stored_models/**": true
     },
     "python.linting.pylintArgs": ["--extension-pkg-whitelist=cv2", "--extension-pkg-whitelist=pygame", "--ignored-modules=pandas" ],

@@ -98,61 +98,51 @@ def load_network(conf):
     x = Lambda(hsv_convert)(x)
 
     # CONV 1
-    x = net.conv(x, 24, 5, 2, activation="relu")
-    #x = net.conv(x, 24, 5, 2, activation="relu")
+    x = net.conv(x, 24, 5, 2, activation="elu")
 
     # CONV 2
-    x = net.conv(x, 36, 5, 2, activation="relu")
+    x = net.conv(x, 36, 5, 2, activation="elu")
 
     # CONV 3
-    x = net.conv(x, 48, 5, 2, activation="relu")
+    x = net.conv(x, 48, 5, 2, activation="elu")
 
     # CONV 4
-    x = net.conv(x, 64, 3, 1, activation="relu")
+    x = net.conv(x, 64, 3, 1, activation="elu")
 
     # CONV 4
-    x = net.conv(x, 64, 3, 1, activation="relu")
+    x = net.conv(x, 64, 3, 1, activation="elu")
 
     #x = net.dropout(x, rate=0.5)
     
     # FLATTEN
     x = Flatten()(x)
+    #x = net.dense(x, 100)
+    #x = net.dense(x, 50)
+    #x = net.dense(x, 10)
+
+    #x = net.dropout(x, rate=0.3)
+    
 
 
     #######     INPUT DATA     #######
-    for measure in input_measures:
-        input_layer = Input(input_size_data[measure], name="input_" + measure)
-        inputs.append(input_layer)
-        x = concatenate([x, input_layer], 1)
-
- 
-    #x = net.dense(x, 8, function="elu")
-    x = net.dense(x, 100, function="relu")
-
-    x = net.dense(x, 50, function="relu") 
-
-    #x = net.dropout(x, rate=0.5)
-    x = net.dense(x, 10)
+    #for measure in input_measures:
+    #    input_layer = Input(input_size_data[measure], name="input_" + measure)
+    #    inputs.append(input_layer)
+    #    x = concatenate([x, input_layer], 1)
 
     
     #######     OUTPUT DATA     #######
     outputs = []
     for measure in output_measures:
-        """if measure == "Throttle" or measure == "Brake":
-            x_branched = net.dense(x, 256, function="relu")
-            #x_branched = net.dropout(x_branched, rate=0.5)
-
-            x_branched = net.dense(x_branched, 128, function="relu")
-            #x_branched = net.dropout(x_branched, rate=0.2)
-
-            x_branched = net.dense(x_branched, 64, function="relu")
-            #x_branched = net.dropout(x_branched, rate=0.2)
-
-            x_branched = net.dense(x_branched, 32, function="relu")
-        else:"""
-
+        function = None
+        if measure != "Steer":
+            function = "relu"
+        x_branched = net.dense(x, 100, function=function)
+        #x_branched = net.dropout(x_branched, rate=0.3)
+        x_branched = net.dense(x_branched, 50, function=function)
+        x_branched = net.dense(x_branched, 10, function=function)
         output_layer = net.dense(
-            x,
+            x_branched,
             conf.output_size_data[measure],
             function=conf.activation_functions["output_" + measure],
             name="output_" + measure

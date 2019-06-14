@@ -29,7 +29,7 @@ def filter_input_based_on_steering(dataframe, conf, temporal):
         
         speed_limit_rep = ("ohe_speed_limit", "[0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0.]")
     except AttributeError:
-        speed_limit_rep = ("speed_limit", 0.3)
+        speed_limit_rep = ("speed_limit", 0.2)
     if not temporal:
         droppable = dataframe[(
             (np.abs(dataframe.Steer) < conf.filter_threshold) & \

@@ -30,7 +30,7 @@ class BatchGenerator(Sequence):
             key for key in self.conf.available_columns if self.conf.output_data[key]
             ]
         self.get_measurements_recordings(data)
-
+        
     def __len__(self):
         return np.ceil(len(self.data)/self.batch_size)
 
@@ -76,10 +76,18 @@ class BatchGenerator(Sequence):
 
     def get_measurements_recordings(self, data):
         self.data = []
-        for i, path in enumerate(self.data_paths):#[:3]):
+        # Use subset avoid using all the data
+        if data == "Validation_data":
+            percentage_of_training_data = 0.1
+            skip_steps = 1
+        else:
+            skip_steps = self.conf.skip_steps
+            percentage_of_training_data = 0.1
+        subset = int(len(self.data_paths)*percentage_of_training_data)
+        for r, path in enumerate(self.data_paths[:subset]):
             df = pd.read_csv(path + self.conf.recordings_path)
-            df["Recording"] = i 
-            for i in range(len(df)):
+            df["Recording"] = r
+            for i in range(0,len(df), skip_steps):
                 if i + self.seq_len < len(df):
                     self.data.append(df.iloc[i:i + self.seq_len, :].copy())
 

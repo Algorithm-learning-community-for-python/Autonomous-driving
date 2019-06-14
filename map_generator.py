@@ -59,7 +59,7 @@ def main():
             print(sp.location)
             cv2.circle(img,(int(sp.location.x)*5 +80 ,int(sp.location.y)*5 + 80), 2, (255,255,255), -1)
 
-            cv2.putText(img, str(i),(int(sp.location.x)*5 +80 ,int(sp.location.y)*5 + 80), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 1)
+            cv2.putText(img, str(i),(int(sp.location.x)*5 +80 ,int(sp.location.y)*5 + 80), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,0,0), 1)
         cv2.imshow("img", img)
         cv2.waitKey(0)
         map.save_to_disk("map")

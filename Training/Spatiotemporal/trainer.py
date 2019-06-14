@@ -39,8 +39,8 @@ class Trainer(object):
 
     def initialise_generator_and_net(self):
         """ Creates a batch generator and a network handler"""
-        self.train_generator = BatchGenerator(self.conf)
-        self.validation_generator = BatchGenerator(self.conf, data="Validation_data")
+        self.train_generator = BatchGenerator(self.conf, data="Training_data_v2")
+        self.validation_generator = BatchGenerator(self.conf, data="Validation_data_v2")
         self.network_handler = load_network(self.conf)
 
     def train(self):

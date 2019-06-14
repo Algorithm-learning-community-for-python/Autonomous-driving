@@ -41,23 +41,23 @@ def recording_to_video(path="../../Test_recordings", cur_folder=None, file_name=
 
                 tl = row["TL_state"]
                 cv2.putText(img,"Speed: " + str(speed) + " / " + str(speed_limit), 
-                    (10,190), 
+                    (10,280), 
                     cv2.FONT_HERSHEY_SIMPLEX, 
-                    0.2,
+                    0.4,
                     (0,0,0),
                     1)
 
                 cv2.putText(img, "Traffic light: " + tl, 
-                    (10,215), 
+                    (10,295), 
                     cv2.FONT_HERSHEY_SIMPLEX, 
-                    0.2,
+                    0.4,
                     (0,0,0),
                     1)
 
                 cv2.putText(img, "Direction: " + direction, 
-                    (10,230), 
+                    (10,310), 
                     cv2.FONT_HERSHEY_SIMPLEX, 
-                    0.2,
+                    0.4,
                     (0,0,0),
                     1)
                 #cv2.imshow('image',img)
@@ -67,8 +67,12 @@ def recording_to_video(path="../../Test_recordings", cur_folder=None, file_name=
                 img_array.append(img)
             except TypeError:
                 continue
-
-        height, width, layers = img_array[0].shape
+        try:
+            height, width, layers = img_array[0].shape
+        except IndexError as i:
+            print("No images found at " + path)
+            print(i)
+            continue
         size = (width,height)
         if file_name == None:
             name = "/project.avi"
@@ -80,5 +84,5 @@ def recording_to_video(path="../../Test_recordings", cur_folder=None, file_name=
             out.write(img_array[i])
         out.release()
 
-#recording_to_video('../../Training_data_2', cur_folder=10)
+recording_to_video('../../Training_data_temp', cur_folder=None)
 #recording_to_video(path="../../Test_recordings", cur_folder=151)

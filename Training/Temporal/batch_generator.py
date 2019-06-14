@@ -24,56 +24,41 @@ class BatchGenerator(Sequence):
             key for key in self.conf.available_columns if self.conf.output_data[key]
             ]
         self.get_measurements_recordings(data)
-
+        self.X = {
+            "input_Image": np.zeros([self.batch_size, self.seq_len] + self.conf.input_size_data["Image"]),
+            "input_Direction": np.zeros([self.batch_size, self.seq_len] + self.conf.input_size_data["Direction"]),
+            "input_Speed": np.zeros([self.batch_size, self.seq_len] + self.conf.input_size_data["Speed"]),
+            "input_ohe_speed_limit": np.zeros([self.batch_size, self.seq_len] + self.conf.input_size_data["ohe_speed_limit"]),
+            "input_TL_state": np.zeros([self.batch_size, self.seq_len] + self.conf.input_size_data["TL_state"]) 
+        }
+        self.Y = {
+            "output_Throttle": np.zeros([self.batch_size, 1]),
+            "output_Brake": np.zeros([self.batch_size, 1]),
+            "output_Steer": np.zeros([self.batch_size, 1]),
+        }
     def __len__(self):
         return np.ceil(len(self.data)/self.batch_size)
 
     def __getitem__(self, idx):
-        images = []
-        measurments = []
-        for b in range(self.batch_size):
-            images.append([])
-
-        for i in range(len(self.input_measures)):
-            measurments.append([])
-            for b in range(self.batch_size):
-                measurments[i].append([])
-        y = []
-        for i in range(len(self.output_measures)):
-            y.append([])
-
         cur_idx = idx*self.batch_size
         for b in range(self.batch_size):
-            #print("new_batch")
-            # Add the current sequence to the batch
+            #Set Input
             sequence = self.data[cur_idx]
             for j in range(self.seq_len):
-                #print("new_row")
-                row = sequence.iloc[j, :]
-                #print(row.frame)
-                images[b].append(self.get_image(row))
-                input_measurements = row[self.input_measures]
-                for i, measure in enumerate(self.input_measures):
+                current_row = sequence.iloc[j, :]
+                self.X["input_Image"][b, j, :, :, :] = self.get_image(current_row)
+                for measure in self.input_measures:
                     if measure == "Speed":
-                        measurments[i][b].append([input_measurements[measure]])
+                        self.X["input_" + measure][b, j, :] = [current_row[measure]]
                     else:
-                        measurments[i][b].append(input_measurements[measure])
-            
-            row = sequence.iloc[-1, :]
-            output_measurements = row[self.output_measures]
-            for i, measure in enumerate(self.output_measures):
-                y[i].append(output_measurements[measure])
+                        self.X["input_" + measure][b, j, :] = current_row[measure]
+            # Set target
+            target_row = sequence.iloc[-1, :]
+            for measure in self.output_measures:
+                self.Y["output_" + measure][b, :] = target_row[measure]
             cur_idx += 1
 
-        # Convert x to dict to allow for multiple inputs
-        X = {}
-        X["input_Image"] = np.array(images)
-        for i, measure in enumerate(self.input_measures):
-            X["input_" + measure] = np.array(measurments[i])
-        Y = {}
-        for i, measure in enumerate(self.output_measures):
-            Y["output_" + measure] = np.array(y[i])
-        return X, Y
+        return self.X, self.Y
 
     def get_measurements_recordings(self, data):
         self.data = []
@@ -83,9 +68,9 @@ class BatchGenerator(Sequence):
             skip_steps = 1
         else:
             skip_steps = self.conf.skip_steps
-            percentage_of_training_data = 0.01
+            percentage_of_training_data = 0.1
         subset = int(len(self.data_paths)*percentage_of_training_data)
-        for r, path in enumerate(self.data_paths):#[:subset]):
+        for r, path in enumerate(self.data_paths[:subset]):
             df = pd.read_csv(path + self.conf.recordings_path)
             df["Recording"] = r
             for i in range(0,len(df), skip_steps):
@@ -96,6 +81,7 @@ class BatchGenerator(Sequence):
             self.data = filter_input_based_on_steering(self.data, self.conf)
             self.data = filter_input_based_on_speed_and_tl(self.data, self.conf)
             self.data = filter_corrupt_input(self.data)
+        #Convert string data to arrays
         for i, sequence in enumerate(self.data):
             for index, row in sequence.iterrows():
                 if self.conf.input_data["Direction"]:

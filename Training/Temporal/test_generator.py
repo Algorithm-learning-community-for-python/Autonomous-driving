@@ -6,7 +6,7 @@ from Temporal.data_configuration import Config
 conf = Config()
 conf.train_conf.batch_size = 2
 conf.filter_input = True
-generator = BatchGenerator(conf)
+#generator = BatchGenerator(conf)
 g = BatchGenerator(conf)
 input_measures = [key for key in conf.available_columns if conf.input_data[key]]
 output_measures = [key for key in conf.available_columns if conf.output_data[key]]

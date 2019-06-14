@@ -2,8 +2,7 @@ carla
 examples
 util
 Training_data
-Training_data_no_cars
-Training_data_testing
+Training_data_temp
 Validation_data
 python_api.md
 *.pyc

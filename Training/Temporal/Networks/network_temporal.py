@@ -139,12 +139,13 @@ def load_network(conf):
     # CONV 3
     x = net.conv(x, 48, 5, 2, activation="relu")
     x = net.batch_norm(x)
+    #x = net.dropout(x, 0.5)
 
     # CONV 4
     x = net.conv(x, 64, 3, 1, activation="relu")
     x = net.batch_norm(x)
 
-    # CONV 4
+    # CONV 5
     x = net.conv(x, 64, 3, 1, activation="relu")
     x = net.batch_norm(x)
 
@@ -158,9 +159,10 @@ def load_network(conf):
         inputs.append(input_layer)
         x = concatenate([x, input_layer])
 
-    x = net.lstm(x, 64, return_sequences=False)
-
-    x = net.dense(x, 32, td=False)
+    x = net.dense(x, 100, activation_function="relu")
+    x = net.dropout(x, 0.3)
+    x = net.lstm(x, 50, return_sequences=False, dropout=0.2)
+    x = net.dense(x, 10, td=False)
 
     outputs = []
     for measure in output_measures:

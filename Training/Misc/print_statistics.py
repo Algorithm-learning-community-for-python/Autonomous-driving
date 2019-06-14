@@ -1,6 +1,6 @@
 import pandas as pd
 from preprocessing import filter_input_based_on_steering, filter_input_based_on_speed_and_tl, filter_corrupt_input
-from Spatial.data_configuration import Config
+from Spatiotemporal.data_configuration import Config
 import os
 import matplotlib
 matplotlib.use("agg")
@@ -176,7 +176,8 @@ def print_steering_statistics(df, name=""):
 conf = Config()
 data_paths=[]
 temporal = False
-dataset = "Training_data"
+#dataset = "Training_data"
+dataset = "Validation_data"
 
 data_paths = get_data_paths(dataset)
 recordings = []

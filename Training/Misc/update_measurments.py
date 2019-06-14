@@ -32,8 +32,6 @@ def one_hot_encode_fields(df):
     ohe_directions = get_one_hot_encoded(conf.direction_categories, df.Direction)
     ohe_tl_state = get_one_hot_encoded(conf.tl_categories, df.TL_state)
     ohe_speed_limits = get_one_hot_encoded(conf.sl_categories, df.speed_limit)
-    #print(ohe_directions.shape)
-   # print(ohe_speed_limits.shape)
     df.loc[:, "ohe_speed_limit"] = None
     df['ohe_speed_limit'] = df['ohe_speed_limit'].astype(object)
 
@@ -66,8 +64,10 @@ def pad_frame(df):
 def round_off_values(df, measure, decimals):
     df[measure] = np.round(df[measure], decimals)
 
+DATA_PATHS = get_data_paths("Training_data_temp")
+#DATA_PATHS = get_data_paths("Training_data")
+#DATA_PATHS = get_data_paths("Validation_data")
 
-DATA_PATHS = get_data_paths("Validation_data")
 start_index = 0
 for path in DATA_PATHS[start_index:]:
     print("\r" + path, end="")
@@ -84,11 +84,3 @@ for path in DATA_PATHS[start_index:]:
     round_off_values(df, "Speed", 3)
     df = remove_unused_collums(df)
     df.to_csv(path + "/Measurments/modified_recording.csv", index=False)
-
-
-
-
-#STORE = pd.HDFStore("../../Training_data/" + 'store.h5')
-#new_path = "Recording_" + path.split("/")[-1]
-#STORE[new_path] = df
-#STORE.close()

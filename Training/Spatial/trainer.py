@@ -2,12 +2,13 @@
 #pylint: disable=superfluous-parens
 import os
 import numpy as np
-from keras.callbacks import ModelCheckpoint, ProgbarLogger, EarlyStopping
+from keras.callbacks import ModelCheckpoint, EarlyStopping
 from Spatial.Networks.nvidia import load_network
 from Spatial.batch_generator import BatchGenerator
 from Spatial.data_configuration import Config
 from Misc.misc import save_results
 from Misc.misc import create_new_folder
+from Spatial.stop_training_on_request import StopTrainingOnInput
 
 class Trainer(object):
     """ Main class for training a new model """
@@ -58,7 +59,8 @@ class Trainer(object):
             callbacks=[
                 ModelCheckpoint(self.checkpoint_path_loss, monitor='loss', save_best_only=True, period=int(np.floor(self.conf.train_conf.epochs/10))),
                 ModelCheckpoint(self.checkpoint_path_val_loss, monitor='val_loss', save_best_only=True),
-                EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1, mode='auto', baseline=None, restore_best_weights=True)
+                EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=1, mode='auto', baseline=None, restore_best_weights=True),
+                StopTrainingOnInput()
             ],
             use_multiprocessing=True,
             workers=12,

@@ -60,7 +60,7 @@ class Trainer(object):
             callbacks=[
                 ModelCheckpoint(self.checkpoint_path_loss, monitor='loss', save_best_only=True, period=int(np.floor(self.conf.train_conf.epochs/10))),
                 ModelCheckpoint(self.checkpoint_path_val_loss, monitor='val_loss', save_best_only=True),
-                EarlyStopping(monitor='val_loss', min_delta=0, patience=7, verbose=1, mode='auto', baseline=None, restore_best_weights=True),
+                EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=1, mode='auto', baseline=None, restore_best_weights=True),
                 #TensorBoard(self.validation_generator2, int(len(self.validation_generator2)/16), 16, log_dir="{}/{}".format(self.logs_dir, time.time()), histogram_freq=1, batch_size=16)
                 TensorBoard(histogram_freq=0, batch_size=16, write_images=False, write_grads=False),
                 StopTrainingOnInput()

@@ -288,7 +288,7 @@ class Recorder():
         self.record_image(image)
 
 
-    def stop_recording(self):
+    def stop_recording(self, stop_condition):
         #print(len(self.recording_text))
         if len(self.recording_text) > 0:
             # define the name of the directory to be created
@@ -313,6 +313,9 @@ class Recorder():
 
             except OSError:
                 print ("Creation of the directory %s failed" % self.path)
+            
+            f = open(self.path + "/" + stop_condition +".txt", "wb+")
+            f.close()
             keys = self.recording_text[0].keys()
             with open(self.path + '/Measurments/recording.csv', 'wb') as f:
                 dict_writer = csv.DictWriter(f, keys)
@@ -384,24 +387,37 @@ def game_loop(args):
     world = None
 
     try:
-        print("COUNTER")
         client = carla.Client(args.host, args.port)
         client.set_timeout(4.0)
-        print("COUNTER")
         
         hud = HUD()
         world = World(client.get_world(), hud, start_waypoint=args.waypoints[0])
 
-        print("COUNTER")
 
-        #i = random.randint(0,1)
-        cloudy = 0
         n_vehicles = 80
         world.spawn_npc(client, n_vehicles=n_vehicles)
-        print("COUNTER")
 
-        if cloudy:
-            world.world.set_weather(carla.WeatherParameters.CloudyNoon)
+        train_weathers = [
+            carla.WeatherParameters.ClearNoon,
+            carla.WeatherParameters.CloudyNoon,
+            carla.WeatherParameters.WetNoon,
+            carla.WeatherParameters.MidRainyNoon,
+            carla.WeatherParameters.CloudySunset,
+            carla.WeatherParameters.WetSunset,
+            carla.WeatherParameters.HardRainSunset,
+            carla.WeatherParameters.ClearSunset,
+        ]
+        test_weathers = [
+            carla.WeatherParameters.WetCloudyNoon,
+            carla.WeatherParameters.HardRainNoon,
+            carla.WeatherParameters.MidRainSunset,
+            carla.WeatherParameters.SoftRainSunset,
+            carla.WeatherParameters.WetCloudySunset,
+            carla.WeatherParameters.SoftRainNoon,
+        ]
+        random_weather = 1
+        if random_weather == 1:
+            world.world.set_weather(np.random.choice(test_weathers))
 
         agent = BasicAgent(world.player, autonomous=True, model_path=args.model, model_type=args.model_type)
         print("COUNTER")
@@ -422,9 +438,9 @@ def game_loop(args):
         world.recorder = recorder
         counter = 0
         fps_que =[]
-        distance_que = []
         stop = False
-
+        not_moving_count = 0
+        previous_distance = 0
         while True:
             # as soon as the server is ready continue!
             if not world.world.wait_for_tick(10.0):
@@ -434,11 +450,13 @@ def game_loop(args):
                 print("Stopping recording session due to collision...")
                 import time
                 time.sleep(1)
+                stop_condition = "collision"
                 stop = True
 
             # Stop recorder when target destination has been reached
-            if len(agent._local_planner._waypoints_queue) == 0:
+            if len(agent._local_planner._waypoints_queue) < 1:
                 print("Target Reached, stopping recording session...")
+                stop_condition = "target_reached"
                 stop = True
 
             counter += 1
@@ -446,18 +464,19 @@ def game_loop(args):
 
             if counter % 200 == 0:
                 print("step: " + str(counter))
-                print("average fps= " + str(sum(fps_que)/len(fps_que)))
-                fps_que = []
                 cur_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
                 distance = cur_waypoint.transform.location.distance(destination.location)
-                distance_que.append(math.ceil(distance))
                 print("Distance to goal= " + str(distance))
-                if len(distance_que) > 15:
-                    distance_que = distance_que[-15:]
-                    if len(set(distance_que)) == 1:
-                        print("Not moving anymore... quiting recording")
-                        stop = True
-                    
+                if abs(distance - previous_distance) < 2:
+                    not_moving_count += 1
+                else:
+                    not_moving_count = 0
+                previous_distance = distance
+                if not_moving_count > 20:
+                    print("Not moving anymore... quiting recording")
+                    stop_condition = "not_moving"
+                    stop = True
+
             if stop:
                 if recorder.sensor is not None:
                     recorder.sensor.destroy()
@@ -469,58 +488,29 @@ def game_loop(args):
                     world.player.destroy()
                     print('\ndestroying %d actors' % len(world.actor_list))
                     client.apply_batch([carla.command.DestroyActor(x) for x in world.actor_list])
-                        
+
                 if counter < 50:
                     print("Didn't get far enough, not storing recording")
                 else:
                     print("Storing images and measurments...")
-                    recorder.stop_recording()
+                    recorder.stop_recording(stop_condition)
                 return
 
 
             speed_limit = world.player.get_speed_limit()
             agent._local_planner.set_speed(speed_limit)
+
             control = agent.run_step(recorder)
             recorder.throttle = control.throttle
             recorder.brake = control.brake
-            #print(control.brake)
-            throttle = control.throttle
+
             brake = control.brake
             if control.brake < 0.1:
                 brake = 0.0
-
             if control.throttle > brake:
                 brake = 0.0
-
-            #if control.throttle < 0.5:
-            #    control.throttle = 0
-            #else: #if control.throttle > 1:
-            #    control.throttle = 1
-            
-            v = world.player.get_velocity()
-            speed = 3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)
-            #if speed < 0.01 and control.brake < 0.95:
-            #    brake = 0.0
             control.brake = brake
 
-            #if speed < 0.5:
-            #    if control.brake > 0.9:# and throttle < 0.5:
-            #        control.brake = 1
-            #    else:
-            #        control.brake = 0
-                
-            #if speed < 30:
-            #if control.brake > 0.5:
-            #    control.brake = 1
-            #else:
-            #    control.brake = 0
-            #else:
-            #    if control.brake > 0.3:
-            #        control.brake = 1
-            #    else:
-            #        control.brake = 0
-
-            
             world.player.apply_control(control)
     except IOError as (errno, strerror):
         print("Error in main loop: error({0}): {1}".format(errno, strerror))

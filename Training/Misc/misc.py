@@ -160,7 +160,7 @@ def get_image_name(frame):
     file_name = pad + frame + '.png'
     return file_name
 
-def get_data_paths(data="Training_data"):
+def get_data_paths(data="Training_data", sort=True):
     """ Fetch all available folder paths and return them in sorted order """
     path = "../../" + data
     data_paths = []
@@ -168,5 +168,6 @@ def get_data_paths(data="Training_data"):
         if folder == ".DS_Store" or folder == "store.h5":
             continue
         data_paths.append(path + "/" + folder)
-    data_paths.sort(key=lambda a: int(a.split("/")[-1]))
+    if sort:
+        data_paths.sort(key=lambda a: int(a.split("/")[-1]))
     return data_paths 
