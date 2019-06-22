@@ -44,7 +44,7 @@ class BatchGenerator(Sequence):
             "output_Steer": np.zeros([self.batch_size, 1]),
         }
     def __len__(self):
-        return np.ceil(len(self.data)/self.batch_size)
+        return int(np.floor(len(self.data)/self.batch_size))
 
     def __getitem__(self, idx):
         cur_idx = idx*self.batch_size

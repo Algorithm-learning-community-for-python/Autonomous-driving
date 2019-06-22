@@ -34,7 +34,7 @@ class BatchGenerator(Sequence):
         self.get_measurements_recordings(data)
         
     def __len__(self):
-        return np.ceil(len(self.data)/self.batch_size)
+        return int(np.floor(len(self.data)/self.batch_size))
 
     def __getitem__(self, idx):
         images = []

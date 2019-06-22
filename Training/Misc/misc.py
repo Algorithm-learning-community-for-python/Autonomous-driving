@@ -103,7 +103,7 @@ def save_results(trainer, path):
     f.close()
 
     # Store config
-    f = open(path + "/conf.txt", "wb+")
+    f = open(path + "/conf.txt", "w+")
     f.write(str(conf.train_conf.__dict__) + "\n")
     f.write(str(conf.input_data) + "\n")
     f.write(str(conf.output_data) + "\n")
@@ -128,7 +128,7 @@ def save_results(trainer, path):
 
     # store plot of losses
     keys = []
-    for key, values in history.history.iteritems():
+    for key, values in history.history.items():
         plt.plot(values)
         keys.append(key)
     plt.title('model loss')
@@ -139,7 +139,7 @@ def save_results(trainer, path):
     plt.close()
 
     # Store training history as txt
-    f = open(path + "/history.txt", "wb+")
+    f = open(path + "/history.txt", "w+")
     f.write(str(history.history) + "\n")
     f.close()
 

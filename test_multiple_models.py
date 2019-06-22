@@ -5,14 +5,14 @@ import argparse
 from autonomous_driver import game_loop
 
 # Which model architecture to use
-#model_type = "Spatial"
-model_type = "Spatiotemporal"
+model_type = "Spatial"
+#model_type = "Spatiotemporal"
 #model_type = "Temporal"
 models_path = "Training/" + model_type + "/Stored_models/"
 
 # Which models to test
 all_models = False
-chosen_folders = [14]
+chosen_folders = [18]
 
 # Which checkpoints to test
 train_loss = False

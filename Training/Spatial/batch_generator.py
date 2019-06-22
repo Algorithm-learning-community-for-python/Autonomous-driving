@@ -26,7 +26,7 @@ class BatchGenerator(Sequence):
         self.get_measurements_recordings(data)
 
     def __len__(self):
-        return np.ceil(len(self.data.index)/self.batch_size)
+        return int(np.floor(len(self.data.index)/self.batch_size))
 
     def __getitem__(self, idx):
         x = [[]]
@@ -38,7 +38,14 @@ class BatchGenerator(Sequence):
         cur_idx = idx*self.batch_size
         for _ in range(self.batch_size):
             # Add the current sequence to the batch
-            row = self.data.iloc[cur_idx, :]
+            try:
+                row = self.data.iloc[cur_idx, :]
+            except IndexError as ie:
+                print("Error in row allocation")
+                print(ie)
+                print("index")
+                print(cur_idx)
+                print("length " + str(len(self.data.index)))
 
             x[0].append(self.get_image(row))
             input_measurements = row[self.input_measures]
@@ -50,6 +57,7 @@ class BatchGenerator(Sequence):
 
             for i, measure in enumerate(self.output_measures):
                 y[i].append(output_measurements[measure])
+            #print(cur_idx)
             cur_idx += 1
 
         # Convert x to dict to allow for multiple inputs
@@ -64,11 +72,13 @@ class BatchGenerator(Sequence):
 
     def get_measurements_recordings(self, data):
         dfs = []
-        for i, path in enumerate(self.data_paths[:len(self.data_paths)]):
+        training_size = int(len(self.data_paths) * 0.5)
+        for i, path in enumerate(self.data_paths[:training_size]):
             df = pd.read_csv(path + self.conf.recordings_path)
             df["Images_path"] = path + self.conf.images_path
             dfs.append(df)
         self.data = pd.concat(dfs, ignore_index=True)
+        print(len(self.data.index))
 
         #Filter
         if self.conf.filter_input and data != "Validation_data":

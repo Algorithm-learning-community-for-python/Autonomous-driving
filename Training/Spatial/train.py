@@ -6,9 +6,9 @@ from keras.optimizers import Adam
 from Spatial.trainer import Trainer
 from Spatial.Networks.network import load_network as load_network
 from Spatial.Networks.nvidia import load_network as load_nvidia
-from Spatial.Networks.nvidiaa_v1 import load_network as load_nvidiaa_v1
-from Spatial.Networks.network_v2 import load_network as load_network_v2
-from Spatial.Networks.xception import load_network as load_xception
+#from Spatial.Networks.nvidiaa_v1 import load_network as load_nvidiaa_v1
+#from Spatial.Networks.network_v2 import load_network as load_network_v2
+#from Spatial.Networks.xception import load_network as load_xception
 
 
 def train_single():
