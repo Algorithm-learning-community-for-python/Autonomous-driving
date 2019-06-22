@@ -8,7 +8,7 @@ from Spatial.batch_generator import BatchGenerator
 from Spatial.data_configuration import Config
 from Misc.misc import save_results
 from Misc.misc import create_new_folder
-from Spatial.stop_training_on_request import StopTrainingOnInput
+from Misc.stop_training_on_request import StopTrainingOnInput
 
 class Trainer(object):
     """ Main class for training a new model """
@@ -49,6 +49,7 @@ class Trainer(object):
         self.network_handler.model.compile(
             loss=self.conf.loss_functions,
             optimizer=self.conf.train_conf.optimizer,
+            #loss_weight=self.conf.loss_weights
         )
         self.history = self.network_handler.model.fit_generator(
             self.train_generator,

@@ -53,13 +53,13 @@ def main():
         world = client.get_world()
         map = world.get_map()
         spawn_points = map.get_spawn_points()
-        img = np.zeros((3000,3000,3), np.uint8)
+        img = np.ones((3000,3000,3), np.uint8)
 
         for i, sp in enumerate(spawn_points):
             print(sp.location)
-            cv2.circle(img,(int(sp.location.x)*5 +80 ,int(sp.location.y)*5 + 80), 2, (255,255,255), -1)
+            cv2.circle(img,(int(sp.location.x)*7 +80 ,int(sp.location.y*5.4) + 80), 2, (255,255,255), -1)
 
-            cv2.putText(img, str(i),(int(sp.location.x)*5 +80 ,int(sp.location.y)*5 + 80), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,0,0), 1)
+            cv2.putText(img, str(i),(int(sp.location.x)*7 + 80 ,int(sp.location.y*5.4) + 80), cv2.FONT_HERSHEY_DUPLEX, 1, (255,255,255), 1)
         cv2.imshow("img", img)
         cv2.waitKey(0)
         map.save_to_disk("map")

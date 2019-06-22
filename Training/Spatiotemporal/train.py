@@ -4,7 +4,7 @@
 import warnings
 warnings.filterwarnings("ignore")
 import argparse
-from keras.optimizers import Adam
+from keras.optimizers import Adam, SGD
 from Spatiotemporal.trainer import Trainer
 from Spatiotemporal.Networks.network import load_network as load_network
 from Spatiotemporal.Networks.nvidia import load_network as load_nvidia
@@ -48,11 +48,15 @@ def train_multi():
     recs = ["/Measurments/modified_recording.csv"] #"/Measurments/recording.csv", modified_recording
     batch_sizes = [16] #[8, 16, 32]
     epochs = [20]
-    nets = [4]
+    nets = [1]
     sigmoid = [False]#, True]
-    sequence_lengths = [5, 7]
+    sequence_lengths = [4]
     filtering = [True]
     learning_rates = [0.00012]  #[0.00001, 0.0001, 0.001]#, 0.00005, 0.0002]
+    #momentum = [0,0.5,1]
+    #decay = [0,0.1, 0.2]
+    #nesterov = [False, True, ]
+
     """
     #Test with noise
     trainer = Trainer()

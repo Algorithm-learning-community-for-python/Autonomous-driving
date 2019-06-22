@@ -23,6 +23,7 @@ import random
 import re
 import sys
 import weakref
+import csv
 
 try:
     import pygame
@@ -88,6 +89,8 @@ from carla import ColorConverter as cc
 from agents.navigation.basic_agent import *
 from agents.navigation.local_planner import RoadOption
 from agents.tools.misc import is_within_distance_ahead
+from Misc.recording_to_video import recording_to_video
+from Misc.rate_test_results import rate_recording
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
@@ -110,9 +113,8 @@ def get_actor_display_name(actor, truncate=250):
 # ==============================================================================
 
 class World(object):
-    def __init__(self, carla_world, hud, actor_filter, start_waypoint=-1):
+    def __init__(self, carla_world, hud, start_waypoint=-1):
         self.world = carla_world
-        #carla_world.set_weather(carla.WeatherParameters.CloudyNoon)
         self.start_waypoint = start_waypoint
 
         self.map = self.world.get_map()
@@ -123,6 +125,7 @@ class World(object):
         self.lane_invasion_sensor = None
         self.gnss_sensor = None
         self.camera_manager = None
+        self.actor_list = []
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
         self._actor_filter = 'vehicle.bmw.grandtourer'
@@ -131,6 +134,48 @@ class World(object):
         self.recording_enabled = False
         self.recording_start = 0
         
+
+    def spawn_npc(self, client, safe=False, n_vehicles=30):
+        blueprints = self.world.get_blueprint_library().filter("vehicle.*")
+
+        if safe:
+            blueprints = [x for x in blueprints if int(x.get_attribute('number_of_wheels')) == 4]
+            blueprints = [x for x in blueprints if not x.id.endswith('isetta')]
+            blueprints = [x for x in blueprints if not x.id.endswith('carlacola')]
+
+        spawn_points = self.world.get_map().get_spawn_points()
+        number_of_spawn_points = len(spawn_points)
+
+        if n_vehicles < number_of_spawn_points:
+            random.shuffle(spawn_points)
+        elif n_vehicles > number_of_spawn_points:
+            msg = 'requested %d vehicles, but could only find %d spawn points'
+            logging.warning(msg, n_vehicles, number_of_spawn_points)
+            n_vehicles = number_of_spawn_points
+
+        # @todo cannot import these directly.
+        SpawnActor = carla.command.SpawnActor
+        SetAutopilot = carla.command.SetAutopilot
+        FutureActor = carla.command.FutureActor
+
+        batch = []
+        for n, transform in enumerate(spawn_points):
+            if n >= n_vehicles:
+                break
+            blueprint = random.choice(blueprints)
+            if blueprint.has_attribute('color'):
+                color = random.choice(blueprint.get_attribute('color').recommended_values)
+                blueprint.set_attribute('color', color)
+            blueprint.set_attribute('role_name', 'autopilot')
+            batch.append(SpawnActor(blueprint, transform).then(SetAutopilot(FutureActor, True)))
+
+        for response in client.apply_batch_sync(batch):
+            if response.error:
+                logging.error(response.error)
+            else:
+                self.actor_list.append(response.actor_id)
+
+        print('spawned %d vehicles, press Ctrl+C to exit.' % len(self.actor_list))
 
     def restart(self):
         # Keep same camera config if the camera manager exists.
@@ -156,6 +201,7 @@ class World(object):
             #spawn_points = self.map.get_spawn_points()
             #spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
+        
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
         self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
@@ -541,6 +587,7 @@ class HelpText(object):
 class CollisionSensor(object):
     def __init__(self, parent_actor, hud):
         self.sensor = None
+        self.collision = False
         self.history = []
         self._parent = parent_actor
         self.hud = hud
@@ -568,6 +615,8 @@ class CollisionSensor(object):
         impulse = event.normal_impulse
         intensity = math.sqrt(impulse.x ** 2 + impulse.y ** 2 + impulse.z ** 2)
         self.history.append((event.frame_number, intensity))
+        self.collision = True
+
         if len(self.history) > 4000:
             self.history.pop(0)
 
@@ -578,6 +627,7 @@ class CollisionSensor(object):
 
 class LaneInvasionSensor(object):
     def __init__(self, parent_actor, hud):
+        self.lane_invasion = ""
         self.sensor = None
         self._parent = parent_actor
         self.hud = hud
@@ -596,6 +646,7 @@ class LaneInvasionSensor(object):
             return
         lane_types = set(x.type for x in event.crossed_lane_markings)
         text = ['%r' % str(x).split()[-1] for x in lane_types]
+        self.lane_invasion = 'Crossed line %s' % ' and '.join(text)
         self.hud.notification('Crossed line %s' % ' and '.join(text))
 
 # ==============================================================================
@@ -741,15 +792,18 @@ class Recorder():
         self.folder_name = folder_name
         self.folder = None
         self.path = path
+        self.throttle = 0
+        self.brake = 0
+        self.controller_updates = 0
         self.camera_transform = carla.Transform(carla.Location(x=1.6, z=1.7))
         self._sensor = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
         server_world = world.player.get_world()
         bp_library = server_world.get_blueprint_library()
         bp = bp_library.find('sensor.camera.rgb')
-        bp.set_attribute('image_size_x', '320')
-        bp.set_attribute('image_size_y', '240')
+        bp.set_attribute('image_size_x', '460')
+        bp.set_attribute('image_size_y', '345')
+
         self._sensor.append(bp)
-        print(self.world.player)
         self.sensor = server_world.spawn_actor(
             self._sensor[-1],
             self.camera_transform,
@@ -761,12 +815,13 @@ class Recorder():
     @staticmethod
     def record(weak_self, image):
         self = weak_self()
-        #self.record_direction(self.world, image.frame_number)
+        #if self.agent._local_planner._target_road_option != None:
         self.record_output(self.world, image.frame_number)
         self.record_image(image)
 
-    def stop_recording(self):
-        # print(len(self.recording_text))
+
+    def stop_recording(self, stop_condition):
+        #print(len(self.recording_text))
         if len(self.recording_text) > 0:
             # define the name of the directory to be created
             if self.folder_name:
@@ -781,62 +836,82 @@ class Recorder():
                 self.folder = last_folder
 
             self.path = self.path + "/" + str(self.folder)
-            print(self.path)
 
             try:
                 os.mkdir(self.path)
                 os.mkdir(self.path + "/Measurments")
                 os.mkdir(self.path + "/Images")
+                print("Successfully created the directory %s " % self.path)
 
             except OSError:
                 print ("Creation of the directory %s failed" % self.path)
-            else:
-                print ("Successfully created the directory %s " % self.path)
-            print(len(self.images))
+            
+            f = open(self.path + "/" + stop_condition +".txt", "wb+")
+            f.close()
             keys = self.recording_text[0].keys()
             with open(self.path + '/Measurments/recording.csv', 'wb') as f:
                 dict_writer = csv.DictWriter(f, keys)
                 dict_writer.writeheader()
                 dict_writer.writerows(self.recording_text)
             self.recording_text = []
+            i = 0
+            l = len(self.images)
             for image in self.images:
-                image.save_to_disk(self.path + '/Images/%08d' % image.frame_number)
+                if i % (math.ceil(l/100)) == 0:
+                    print("\r Storing image " + str(i) + " of " + str(l), end="")
+                if i % 4 == 0:
+                    image.save_to_disk(self.path + '/Images/%08d' % image.frame_number)
+                
+                i += 1
             self.images = []
-        
+
     def record_output(self, world, frame_number):
-        #lane_invasion = world.lane_invasion_sensor.lane_invasion
-        #if len(lane_invasion) > 2:
-            #world.lane_invasion_sensor.lane_invasion = ""
+        lane_invasion = world.lane_invasion_sensor.lane_invasion
+        if len(lane_invasion) > 2:
+            world.lane_invasion_sensor.lane_invasion = ""
         control = world.player.get_control()
         v = world.player.get_velocity()
-        speed_limit = world.player.get_speed_limit()
-        is_at_traffic_light = world.player.is_at_traffic_light()
+        speed_limit = world.player.get_speed_limit() - 10
+        if world.player.is_at_traffic_light():
+            is_at_traffic_light = 1
+        else:
+            is_at_traffic_light = 0
+        #old_traffic_light = world.player.get_traffic_light()
         traffic_light_state = self.agent.light_state
 
+        direction = self.agent._local_planner._target_road_option
+        if self.agent._local_planner._look_ahead_road_option != RoadOption.LANEFOLLOW and self.agent._local_planner._look_ahead_road_option != RoadOption.VOID:
+            direction = self.agent._local_planner._look_ahead_road_option
+        if direction is None:
+            direction = RoadOption.VOID
         self.recording_text.append({
             'frame': frame_number,
             'Speed': np.round((3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))/100, 4),
             'Throttle': control.throttle,
+            'Predicted_Throttle': self.throttle,
+            'Predicted_Brake': self.brake,
             'Steer': control.steer,
             'Brake': control.brake,
-            'Reverse': control.reverse,
-            'Hand brake': control.hand_brake,
-            'Manual': control.manual_gear_shift,
+            #'Reverse': control.reverse,
+            #'Hand brake': control.hand_brake,
+            #'Manual': control.manual_gear_shift,
             'Gear': control.gear,
             'speed_limit': float(speed_limit)/100,
             'at_TL': is_at_traffic_light,
             #'TL': traffic_light,
             'TL_state': traffic_light_state,
             'fps': self.world.hud.server_fps,
-            'Direction': self.agent._local_planner._target_road_option,
-            #'Lane_Invasion': lane_invasion,
-            #'Collision': self.world.collision_sensor.collision
+            'Direction': direction,
+            'Lane_Invasion': lane_invasion,
+            'Collision': self.world.collision_sensor.collision,
+            'controller_updates': self.controller_updates,
+            "real_time(s)": pygame.time.get_ticks() / 1000,
+            "Simulation_time(s)": datetime.timedelta(seconds=int(world.hud.simulation_time)),
         })
 
-
     def record_image(self, image):
-            image.convert(cc.Raw)
-            self.images.append(image)
+        image.convert(cc.Raw)
+        self.images.append(image)
 
 # ==============================================================================
 # -- game_loop() ---------------------------------------------------------
@@ -850,25 +925,68 @@ def game_loop(args):
     try:
         client = carla.Client(args.host, args.port)
         client.set_timeout(4.0)
-
+        width = 1280
+        height = 720
         display = pygame.display.set_mode(
-            (args.width, args.height),
+            (width, height),
             pygame.HWSURFACE | pygame.DOUBLEBUF)
 
-        hud = HUD(args.width, args.height)
-        world = World(client.get_world(), hud, args.filter, start_waypoint=args.waypoints[0])
+        hud = HUD(width, height)
+
+        world = World(client.get_world(), hud, start_waypoint=args.waypoints[0])
+        n_vehicles = 80
+        world.spawn_npc(client, n_vehicles=n_vehicles)
+
+        train_weathers = [
+            carla.WeatherParameters.ClearNoon,
+            carla.WeatherParameters.CloudyNoon,
+            carla.WeatherParameters.WetNoon,
+            carla.WeatherParameters.SoftRainNoon,
+
+
+            carla.WeatherParameters.ClearSunset,
+            carla.WeatherParameters.CloudySunset,
+            carla.WeatherParameters.WetSunset,
+            carla.WeatherParameters.SoftRainSunset,
+
+        ]
+
+        test_weathers = [
+            carla.WeatherParameters.WetCloudyNoon,
+            carla.WeatherParameters.MidRainyNoon,
+            carla.WeatherParameters.HardRainNoon,
+
+            carla.WeatherParameters.WetCloudySunset,
+            carla.WeatherParameters.HardRainSunset,
+            carla.WeatherParameters.MidRainSunset,
+        ]
+        random_weather = 0
+        if random_weather == 1:
+            world.world.set_weather(np.random.choice(train_weathers))
+        else:
+            world.world.set_weather(carla.WeatherParameters.CloudyNoon)
+
         controller = KeyboardControl(world, False)
+        agent = BasicAgent(world.player, autonomous=True, model_path=args.model, model_type=args.model_type)
 
-        ### NB: Random start point each time
-        #args.model= "Training/Spatial/Stored_models/32/Checkpoints/best-val-16-0.058.hdf5"
-        agent = BasicAgent(world.player, autonomous=True, model_path=args.model)
-        spawn_point = world.map.get_spawn_points()[args.waypoints[1]]
-        agent.set_destination((spawn_point.location.x,
-                               spawn_point.location.y,
-                               spawn_point.location.z))
+        start_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
+        destination = world.map.get_spawn_points()[args.waypoints[1]]
 
+        agent.set_destination((destination.location.x,
+                               destination.location.y,
+                               destination.location.z))
+
+        distance = start_waypoint.transform.location.distance(
+                destination.location)
+
+        print("Initial distance: " + str(distance))
         recorder = Recorder(world, agent, args.path)
         world.recorder = recorder
+        counter = 0
+        fps_que =[]
+        stop = False
+        not_moving_count = 0
+        previous_distance = 0
         clock = pygame.time.Clock()
         while True:
             if controller.parse_events(client, world, clock, recorder):
@@ -883,20 +1001,17 @@ def game_loop(args):
             pygame.display.flip()
             speed_limit = world.player.get_speed_limit()
             agent._local_planner.set_speed(speed_limit)
+
             control = agent.run_step(recorder)
-            #print(control)
+            recorder.throttle = control.throttle
+            recorder.brake = control.brake
 
-            if control.throttle < 0.5:
-                control.throttle = 0
-            else:
-                control.throttle = 1
-
-            if control.brake > 0.5:
-                control.brake = 1
-            else:
-                control.brake = 0
-            
-            #control.gear=2
+            brake = control.brake
+            if control.brake < 0.1:
+                brake = 0.0
+            if control.throttle > brake:
+                brake = 0.0
+            control.brake = brake
             control.manual_gear_shift = False
 
             world.player.apply_control(control)
@@ -906,7 +1021,6 @@ def game_loop(args):
             world.destroy()
 
         pygame.quit()
-
 
 # ==============================================================================
 # -- main() --------------------------------------------------------------
@@ -923,10 +1037,14 @@ def main():
     argparser.add_argument(
         '--model',
         default=None,
-        help='Where to fetch model')
+        help='Where to store data')
+    argparser.add_argument(
+        '--model_type',
+        default="Spatiotemporal",
+        help='Which modeltype to use (spatial, temporal, spatiotemporal)')
     argparser.add_argument(
         '--waypoints',
-        default=[150, 24], #[-1, 0],
+        default=[-1, 0], #[-1, 0],
         help='Waypoint index of where to start and stop')
     argparser.add_argument(
         '-v', '--verbose',

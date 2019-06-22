@@ -18,10 +18,10 @@ def extend_steering_commands(dataframe):
     Similar to a person getting a direction before he reaches the intersection
     """
     for index, row in dataframe.iterrows():
-        if row.Direction != "RoadOption.LANEFOLLOW":
-            rows_to_change = 6
-            if index > 6:
-                for i in range(index-6, index):
+        if row.Direction != "RoadOption.LANEFOLLOW" and row.Direction != "RoadOption.VOID":
+            rows_to_change = 30
+            if index > rows_to_change:
+                for i in range(index-30, index):
                     if dataframe.loc[i, "Direction"] != "RoadOption.LANEFOLLOW" and \
                         dataframe.loc[i, "Direction"] != row.Direction:
                         rows_to_change = (index - 1) - i
@@ -64,8 +64,8 @@ def pad_frame(df):
 def round_off_values(df, measure, decimals):
     df[measure] = np.round(df[measure], decimals)
 
+#DATA_PATHS = get_data_paths("Validation_data")
 DATA_PATHS = get_data_paths("Training_data_temp")
-#DATA_PATHS = get_data_paths("Training_data")
 #DATA_PATHS = get_data_paths("Validation_data")
 
 start_index = 0

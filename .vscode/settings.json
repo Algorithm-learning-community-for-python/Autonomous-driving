@@ -3,6 +3,11 @@
     "files.watcherExclude": {
         "**/Training_data/**": true,
         "**/Training_data_temp/**": true,
+        "**/Training_data_temp_2/**": true,
+        "**/Training_data_high_speed/**": true,
+        "**/Training_data_steady_driving/**": true,
+        "**/Training_data_unsteady_driving/**": true,
+        "**/Training_data_no_cars_with_noise/**": true,
         "**/Test_recordings/**": true,
         "**/Validation_data/**": true,
         "**/Stored_models/**": true

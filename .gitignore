@@ -3,6 +3,10 @@ examples
 util
 Training_data
 Training_data_temp
+Training_data_no_cars_with_noise
+Training_data_temp_2
+training_data_steady_driving
+training_data_unsteady_driving
 Validation_data
 python_api.md
 *.pyc

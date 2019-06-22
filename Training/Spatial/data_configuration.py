@@ -30,12 +30,13 @@ class Config(object):
         self.bottom_crop = 0
         self.top_crop = 165
         self.filter_input = True
-        self.filtering_degree = 0.8  # 0 = remove none, 1 = remove all
+        self.filtering_degree = 0.5  # 0 = remove none, 1 = remove all
         self.filter_threshold = 0.1
 
-        self.filtering_degree_speed = 0.80
+        self.filtering_degree_speed = 0.5
         self.filter_threshold_speed = 0.00001
         self.recordings_path = "/Measurments/modified_recording.csv"
+        self.images_path = "/Updated_images/"
         self.folder_index = -1
         self.add_noise = False
 
@@ -94,7 +95,7 @@ class Config(object):
             "Brake": True,
         }
         self.input_size_data = {
-            "Image": [345-(self.top_crop+self.bottom_crop), 460, 3],
+            "Image": [66, 200, 3],
             "Direction": [7],
             "Speed": [1],
             "speed_limit": [1], 
@@ -118,7 +119,11 @@ class Config(object):
             "output_Brake": None,
             "output_Steer": None,
         }
-        self.Sequence_length = 5
+        self.loss_weights={
+            'output_Throttle': 1.,
+            'output_Brake': 1.,
+            'output_Steer': 2.
+        }
         self.direction_categories = [
             "RoadOption.VOID",
             "RoadOption.LEFT",

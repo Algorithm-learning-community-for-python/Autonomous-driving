@@ -2,25 +2,28 @@
 #pylint: disable=invalid-name
 import os
 import argparse
-from autonomous_driver_trimmed import game_loop
+from autonomous_driver import game_loop
 
 # Which model architecture to use
-model_type = "Temporal"
+#model_type = "Spatial"
+model_type = "Spatiotemporal"
+#model_type = "Temporal"
 models_path = "Training/" + model_type + "/Stored_models/"
 
 # Which models to test
 all_models = False
-chosen_folders = [1,2,3,4,5,6]
+chosen_folders = [14]
 
 # Which checkpoints to test
+train_loss = False
+val_loss = True
 best_checkpoint_only = True
-threshold_epoch = 0 # Only applicable if best_checkpoint_only is false
+threshold_epoch = 2 # Only applicable if best_checkpoint_only is false
 
 # Define which tracks to test
 # Town 1 has 4 possible tracks
 # Town 2 has 3 possible tracks
-town_one = True
-town_two = False
+town = 1
 tracks_town_1 = [0]
 tracks_town_2 = [0, 1, 2]
 
@@ -37,33 +40,37 @@ def get_paths(dir_path, split_on, sort_idx):
 
 
 # Fetch the models to test
+if all_models:
+    data_paths = get_paths(models_path, "/", -1)
+else:
+    data_paths = []
+    for folder in chosen_folders:
+        data_paths.append(models_path + str(folder))
 
 best_loss_models = []
 best_val_models = []
-if all_models:
-    data_paths = get_paths(models_path, "/", -1)
-    for path in data_paths:
-        checkpoints = get_paths(path + "/Checkpoints", "-", 2)
-        best_loss = True
-        best_val = True
-        checkpoints.reverse()
-        for checkpoint in checkpoints:
-            if best_val and "val" in checkpoint:
-                best_val = False
-                best_val_models.append(checkpoint)
-else:
-    for folder in chosen_folders:
-        checkpoints = get_paths(models_path + str(folder) + "/Checkpoints", "-", 1)
-        checkpoints.reverse()
-        for checkpoint in checkpoints:
-            if "val" in checkpoint:
-                if best_checkpoint_only:
-                    best_val_models.append(checkpoint)
-                    break
-                else:
-                    if int(checkpoint.split("-")[1]) > threshold_epoch:
-                        best_val_models.append(checkpoint)
 
+for path in data_paths:
+    checkpoints = get_paths(path + "/Checkpoints", "-", 1)
+    checkpoints.reverse()
+    best_val_checkpoints = [c for c in checkpoints if "val_loss" in c]
+    best_train_checkpoints = [c for c in checkpoints if "train_loss" in c]
+    if train_loss:
+        for checkpoint in best_train_checkpoints:
+            if best_checkpoint_only:
+                best_val_models.append(checkpoint)
+                break
+            else:
+                if int(checkpoint.split("-")[1]) > threshold_epoch:
+                    best_val_models.append(checkpoint)
+    if val_loss:
+        for checkpoint in best_val_checkpoints:
+            if best_checkpoint_only:
+                best_val_models.append(checkpoint)
+                break
+            else:
+                if int(checkpoint.split("-")[1]) > threshold_epoch:
+                    best_val_models.append(checkpoint)
 
 # Define arguments for the carla client
 
@@ -93,6 +100,7 @@ argparser.add_argument(
 # Test the models
 
 waypoints_town_1 = [
+    #[181, 24],
     [150, 24],
     [200, 70],
     [49, 209],
@@ -103,7 +111,7 @@ waypoints_town_2 = [
     [12, 6],
     [46, 45]
 ]
-if town_one:
+if town == 1:
     for model in best_val_models:
         for track in tracks_town_1:
             args = argparser.parse_args()
@@ -112,7 +120,7 @@ if town_one:
             args.waypoints = waypoints_town_1[track]
             game_loop(args)
 
-if town_two:
+if town == 2:
     for model in best_val_models:
         for track in tracks_town_2:
             args = argparser.parse_args()

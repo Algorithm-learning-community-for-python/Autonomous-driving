@@ -40,6 +40,10 @@ def get_model_memory_usage(batch_size, model):
 def create_new_folder(path):
     last_folder = 0
     for folder in os.listdir(path):
+        try:
+            int(folder)
+        except ValueError as v:
+            continue
         if int(folder) >= last_folder:
             last_folder = int(folder)+1
     folder = last_folder
@@ -117,6 +121,7 @@ def save_results(trainer, path):
         f.write("Step size training: " + str(conf.step_size_training) + "\n")
         f.write("Step size testing: " + str(conf.step_size_testing) + "\n")
     f.write("Loss_functions: " + str(conf.loss_functions) + "\n")
+    f.write("Loss weights: "  + str(conf.loss_weights) + "\n")
     f.write("Activation_functions: " + str(conf.activation_functions) + "\n")
     f.write("Recordings: " + str(conf.recordings_path) + "\n")
     f.close()
@@ -165,7 +170,9 @@ def get_data_paths(data="Training_data", sort=True):
     path = "../../" + data
     data_paths = []
     for folder in os.listdir(path):
-        if folder == ".DS_Store" or folder == "store.h5":
+        try:
+            int(folder)
+        except ValueError as v:
             continue
         data_paths.append(path + "/" + folder)
     if sort:

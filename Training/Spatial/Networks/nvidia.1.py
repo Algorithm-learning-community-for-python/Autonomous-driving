@@ -89,61 +89,50 @@ def load_network(conf):
     output_measures = [key for key in conf.available_columns if conf.output_data[key]]
     input_size_data = conf.input_size_data
 
-    first = True
     inputs = []
+    x = Input(shape=input_size_data["Image"], name="input_Image")
+    inputs.append(x)
     net = NetworkHandler()
-    for i in range(conf.input_size_data["Sequence_length"]):
-        x = Input(shape=input_size_data["Image"], name="input_Image" + str(i))
-        inputs.append(x)
 
-        # RGB TO HSV
-        x = Lambda(hsv_convert)(x)
+    # RGB TO HSV
+    x = Lambda(hsv_convert)(x)
 
-        # CONV 1
-        x = net.conv(x, 24, 5, 2, activation="relu")
-        #x = net.conv(x, 24, 5, 2, activation="relu")
+    # CONV 1
+    x = net.conv(x, 24, 5, 2, activation="relu")
+    #x = net.conv(x, 24, 5, 2, activation="relu")
 
-        # CONV 2
-        x = net.conv(x, 36, 5, 2, activation="relu")
+    # CONV 2
+    x = net.conv(x, 36, 5, 2, activation="relu")
 
-        # CONV 3
-        x = net.conv(x, 48, 5, 2, activation="relu")
+    # CONV 3
+    x = net.conv(x, 48, 5, 2, activation="relu")
 
-        # CONV 4
-        x = net.conv(x, 64, 3, 1, activation="relu")
+    # CONV 4
+    x = net.conv(x, 64, 3, 1, activation="relu")
 
-        # CONV 5
-        x = net.conv(x, 64, 3, 1, activation="relu")
+    # CONV 4
+    x = net.conv(x, 64, 3, 1, activation="relu")
 
-        # CONV 6 
-        #x = net.conv(x, 128, 3, 1, activation="relu")
-        #x = net.dropout(x, rate=0.5)
-        
-        # FLATTEN
-        x = Flatten()(x)
+    #x = net.dropout(x, rate=0.5)
+    
+    # FLATTEN
+    x = Flatten()(x)
 
 
-        #######     INPUT DATA     #######
-        for measure in input_measures:
-            input_layer = Input(input_size_data[measure], name="input_" + measure + str(i))
-            inputs.append(input_layer)
-            x = concatenate([x, input_layer], 1)
-
-        if first:
-            X = x
-            first = False
-        else:
-            X = concatenate([X, x], 1)
+    #######     INPUT DATA     #######
+    for measure in input_measures:
+        input_layer = Input(input_size_data[measure], name="input_" + measure)
+        inputs.append(input_layer)
+        x = concatenate([x, input_layer], 1)
 
  
     #x = net.dense(x, 8, function="elu")
-    X = net.dense(X, 256, function="relu")
-    X = net.dropout(X, 0.4)
-    X = net.dense(X, 128, function="relu") 
-    X = net.dropout(X, 0.2)
+    x = net.dense(x, 100, function="relu")
+
+    x = net.dense(x, 50, function="relu") 
 
     #x = net.dropout(x, rate=0.5)
-    X = net.dense(X, 16)
+    x = net.dense(x, 10)
 
     
     #######     OUTPUT DATA     #######
@@ -163,7 +152,7 @@ def load_network(conf):
         else:"""
 
         output_layer = net.dense(
-            X,
+            x,
             conf.output_size_data[measure],
             function=conf.activation_functions["output_" + measure],
             name="output_" + measure

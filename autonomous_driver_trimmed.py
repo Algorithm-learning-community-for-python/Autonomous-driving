@@ -167,7 +167,6 @@ class World(object):
                 self.lane_invasion_sensor.sensor.destroy()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         while self.player is None:
-            print("try spawning")
             spawn_point = self.map.get_spawn_points()[self.start_waypoint]
             #spawn_points = self.map.get_spawn_points()
             #spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
@@ -183,11 +182,13 @@ class World(object):
 class HUD(object):
     def __init__(self):
         self.server_fps = 0
+        self.simulation_time = 0
         self._server_clock = pygame.time.Clock()
 
     def on_world_tick(self, timestamp):
         self._server_clock.tick()
         self.server_fps = self._server_clock.get_fps()
+        self.simulation_time = timestamp.elapsed_seconds
 
 
 # ==============================================================================
@@ -261,15 +262,16 @@ class Recorder():
         self.folder_name = folder_name
         self.folder = None
         self.path = path
-        self.throttle = None
-        self.brake = None
+        self.throttle = 0
+        self.brake = 0
+        self.controller_updates = 0
         self.camera_transform = carla.Transform(carla.Location(x=1.6, z=1.7))
         self._sensor = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
         server_world = world.player.get_world()
         bp_library = server_world.get_blueprint_library()
         bp = bp_library.find('sensor.camera.rgb')
-        bp.set_attribute('image_size_x', '320')
-        bp.set_attribute('image_size_y', '240')
+        bp.set_attribute('image_size_x', '460')
+        bp.set_attribute('image_size_y', '345')
 
         self._sensor.append(bp)
         self.sensor = server_world.spawn_actor(
@@ -339,7 +341,7 @@ class Recorder():
             world.lane_invasion_sensor.lane_invasion = ""
         control = world.player.get_control()
         v = world.player.get_velocity()
-        speed_limit = world.player.get_speed_limit()
+        speed_limit = world.player.get_speed_limit() - 10
         if world.player.is_at_traffic_light():
             is_at_traffic_light = 1
         else:
@@ -350,7 +352,8 @@ class Recorder():
         direction = self.agent._local_planner._target_road_option
         if self.agent._local_planner._look_ahead_road_option != RoadOption.LANEFOLLOW:
             direction = self.agent._local_planner._look_ahead_road_option
-
+        if direction is None:
+            direction = RoadOption.VOID
         self.recording_text.append({
             'frame': frame_number,
             'Speed': np.round((3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))/100, 4),
@@ -370,7 +373,10 @@ class Recorder():
             'fps': self.world.hud.server_fps,
             'Direction': direction,
             'Lane_Invasion': lane_invasion,
-            'Collision': self.world.collision_sensor.collision
+            'Collision': self.world.collision_sensor.collision,
+            'controller_updates': self.controller_updates,
+            "real_time(s)": pygame.time.get_ticks() / 1000,
+            "Simulation_time(s)": datetime.timedelta(seconds=int(world.hud.simulation_time)),
         })
 
     def record_image(self, image):
@@ -401,24 +407,30 @@ def game_loop(args):
             carla.WeatherParameters.ClearNoon,
             carla.WeatherParameters.CloudyNoon,
             carla.WeatherParameters.WetNoon,
-            carla.WeatherParameters.MidRainyNoon,
+            carla.WeatherParameters.SoftRainNoon,
+
+
+            carla.WeatherParameters.ClearSunset,
             carla.WeatherParameters.CloudySunset,
             carla.WeatherParameters.WetSunset,
-            carla.WeatherParameters.HardRainSunset,
-            carla.WeatherParameters.ClearSunset,
+            carla.WeatherParameters.SoftRainSunset,
+
         ]
+
         test_weathers = [
             carla.WeatherParameters.WetCloudyNoon,
+            carla.WeatherParameters.MidRainyNoon,
             carla.WeatherParameters.HardRainNoon,
-            carla.WeatherParameters.MidRainSunset,
-            carla.WeatherParameters.SoftRainSunset,
-            carla.WeatherParameters.WetCloudySunset,
-            carla.WeatherParameters.SoftRainNoon,
-        ]
-        random_weather = 1
-        if random_weather == 1:
-            world.world.set_weather(np.random.choice(test_weathers))
 
+            carla.WeatherParameters.WetCloudySunset,
+            carla.WeatherParameters.HardRainSunset,
+            carla.WeatherParameters.MidRainSunset,
+        ]
+        random_weather = 0
+        if random_weather == 1:
+            world.world.set_weather(np.random.choice(train_weathers))
+        else:
+            world.world.set_weather(carla.WeatherParameters.CloudyNoon)
         agent = BasicAgent(world.player, autonomous=True, model_path=args.model, model_type=args.model_type)
         print("COUNTER")
 
@@ -510,7 +522,8 @@ def game_loop(args):
             if control.throttle > brake:
                 brake = 0.0
             control.brake = brake
-
+            recorder.controller_updates += 1
+            #print(recorder.controller_updates)
             world.player.apply_control(control)
     except IOError as (errno, strerror):
         print("Error in main loop: error({0}): {1}".format(errno, strerror))

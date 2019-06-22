@@ -113,7 +113,7 @@ def get_actor_display_name(actor, truncate=250):
 # ==============================================================================
 
 class World(object):
-    def __init__(self, carla_world, hud, actor_filter):
+    def __init__(self, carla_world, hud, actor_filter, spawn_point_idx=None):
         self.world = carla_world
         self.map = self.world.get_map()
         self.hud = hud
@@ -123,6 +123,8 @@ class World(object):
         self.lane_invasion_sensor = None
         self.gnss_sensor = None
         self.camera_manager = None
+        self.spawn_point_idx = spawn_point_idx
+
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
         self._actor_filter = 'vehicle.bmw.grandtourer'
@@ -193,9 +195,12 @@ class World(object):
             self.destroy()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         while self.player is None:
-            spawn_point = self.map.get_spawn_points()[150]
-            #spawn_points = self.map.get_spawn_points()
-            #spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
+            if self.spawn_point_idx is None:
+                spawn_points = self.map.get_spawn_points()
+                spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
+            else:
+                spawn_point = self.map.get_spawn_points()[self.spawn_point_idx]
+
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
@@ -788,6 +793,7 @@ class Recorder():
         self.folder_name = folder_name
         self.path = path
         self.record = False
+        self.adding_noise = False
         self.camera_transform = carla.Transform(carla.Location(x=1.6, z=1.7))
         self._sensor = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
         server_world = world.player.get_world()
@@ -796,7 +802,7 @@ class Recorder():
         bp.set_attribute('image_size_x', '320')
         bp.set_attribute('image_size_y', '240')
         #bp.set_attribute('fov', '120')
-        bp.set_attribute('sensor_tick', '0.20')
+        bp.set_attribute('sensor_tick', '0.10')
 
         self._sensor.append(bp)
         self.sensor = server_world.spawn_actor(
@@ -866,12 +872,16 @@ class Recorder():
             is_at_traffic_light = 1
         else:
             is_at_traffic_light = 0
+        if self.adding_noise:
+            steer = self.agent.steering_buffer.popleft()
+        else:
+            steer = control.steer
         traffic_light_state = self.agent.light_state
         self.recording_text.append({
             'frame': frame_number,
             'Speed': np.round((3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))/100, 4),
             'Throttle': control.throttle,
-            'Steer': control.steer,
+            'Steer': steer,
             'Brake': control.brake,
             'Reverse': control.reverse,
             'Hand brake': control.hand_brake,
@@ -882,7 +892,8 @@ class Recorder():
             #'TL': traffic_light,
             'TL_state': traffic_light_state,
             'fps': self.world.hud.server_fps,
-            'Direction': self.agent._local_planner._target_road_option
+            'Direction': self.agent._local_planner._target_road_option,
+            "Noise": self.adding_noise 
         })
     def record_image(self, image):
         image.convert(cc.Raw)
@@ -907,18 +918,19 @@ def game_loop(args):
             pygame.HWSURFACE | pygame.DOUBLEBUF)
 
         hud = HUD(args.width, args.height)
-        world = World(client.get_world(), hud, args.filter)
+        world = World(client.get_world(), hud, args.filter, spawn_point_idx=44)
         controller = KeyboardControl(world, False)
-        world.spawn_npc(client, n_vehicles=80)
+        world.spawn_npc(client, n_vehicles=140)
 
         agent = BasicAgent(world.player)
-        spawn_point = world.map.get_spawn_points()[24]
+        spawn_point = world.map.get_spawn_points()[162]
         agent.set_destination((spawn_point.location.x,
                                spawn_point.location.y,
                                spawn_point.location.z))
         
         recorder = Recorder(world, agent, args.path)
         world.recorder = recorder
+        recorder.record = True
 
         clock = pygame.time.Clock()
         # Start controller straight away
@@ -947,6 +959,7 @@ def game_loop(args):
 
             control = agent.run_step(recorder)
             control.manual_gear_shift = False
+
             world.player.apply_control(control)
 
     finally:
@@ -971,7 +984,7 @@ def main():
         description='CARLA Manual Control Client')
     argparser.add_argument(
         '--path',
-        default='Validation_data',
+        default='Training_data_temp',
         help='Where to store data')
     argparser.add_argument(
         '-v', '--verbose',
@@ -992,7 +1005,7 @@ def main():
     argparser.add_argument(
         '--res',
         metavar='WIDTHxHEIGHT',
-        default='1280x720',
+        default='2560x1440',
         help='window resolution (default: 1280x720)')
     argparser.add_argument(
         '--filter',

@@ -1,10 +1,13 @@
+""" Module that prints relevant statistics """
+#pylint: disable=invalid-name
+#pylint: disable=superfluous-parens
 import pandas as pd
 from preprocessing import (
-    filter_input_based_on_steering, \
-    filter_input_based_on_speed_and_tl, \
-    filter_corrupt_input
+    filter_sequence_input_based_on_steering, \
+    filter_sequence_input_based_on_not_moving, \
+    filter_corrupt_sequence_input, \
     )
-from Spatial.data_configuration import Config
+from Spatiotemporal.data_configuration import Config
 import os
 import matplotlib
 matplotlib.use("agg")
@@ -156,19 +159,20 @@ def print_brake_vs_throttle(df, name=""):
 
 
 
-def print_steering_statistics(df, name=""):
+def print_steering_statistics(df, conf, name=""):
     df["Steer_binned"] = pd.cut(df["Steer"], 10)
+    threshold = conf.filter_threshold
     print_multi_column_based_statistics(df, ["Direction", "Steer_binned"], "frame", name="", mean=False, std=False)
 
     stats.write("############## RANGE OF STEERING SAMPLES " + name + " ##############")
     stats.write("\n")
 
-    l = len([(s, d) for (s,d) in zip(df.Steer.values, df.Direction.values) if abs(s) < 0.1 and d =="RoadOption.LANEFOLLOW"])
-    stats.write("Samples steering less than 0.1 and lanefollow: " + str(l))
+    l = len([(s, d) for (s,d) in zip(df.Steer.values, df.Direction.values) if abs(s) < threshold and (d =="[0. 0. 1. 0. 0. 0. 0.]" or d =="[0. 0. 0. 0. 0. 0. 1.]")])
+    stats.write("Samples steering less than " + str(threshold) + " and lanefollow: " + str(l))
     stats.write("\n")
 
-    l = len([x for x in df.Steer.values if abs(x) > 0.1])
-    stats.write("Samples steering more than 0.1: " + str(l))
+    l = len([x for x in df.Steer.values if abs(x) > threshold])
+    stats.write("Samples steering more than " + str(threshold) + ": " + str(l))
     stats.write("\n")
 
     l = len([x for x in df.Steer.values if abs(x) > 0.4])
@@ -179,48 +183,109 @@ def print_steering_statistics(df, name=""):
 
 conf = Config()
 data_paths=[]
+recordings_path = conf.recordings_path
+if recordings_path == "/Measurments/recording.csv":
+    speed_limit_rep = "speed_limit"
+else:
+    speed_limit_rep = "ohe_speed_limit"
+
+temporal = False
 dataset = "Training_data"
 #dataset = "Validation_data"
 
+print("Fetching data_paths")
 data_paths = get_data_paths(dataset)
-recordings = []
-for path in data_paths:
-    df = pd.read_csv(path + "/Measurments/recording.csv")
-    recordings.append(df)
-data = pd.concat(recordings, ignore_index=True)
+print("Fetched " + str(len(data_paths)) + " episodes")
+data = []
+step_size = conf.step_size_training
+skip_steps = conf.skip_steps
+seq_len = conf.input_size_data["Sequence_length"]
+skipped_samples = 0
+non_skipped_turn = 0
+not_skipped = 0
+# Use subset avoid using all the data
+percentage_of_training_data = 0.05
+subset = int(len(data_paths)*percentage_of_training_data)
 
-stats = open(dataset + "_statistics.txt","w") 
-stats.write("\n")
-stats.write("\n")
-stats.write("======================================== DATA STATISTICS ========================================")
-stats.write("\n")
-stats.write("\n")
+print("Fetching data from the first " + str(subset) + " episodes")
+for r, path in enumerate(data_paths[:subset]):
+    df = pd.read_csv(path + conf.recordings_path)
+    df["Images_path"] = path + "/Images/"
+    for i in range(0, len(df)):
+        if i + (seq_len*step_size) < len(df):
+            indexes = []
+            lanefollow = True
+            for j in range(i, i + (seq_len*step_size), step_size):
+                if df.iloc[j, :].Direction != "[0. 0. 1. 0. 0. 0. 0.]" and df.iloc[j, :].Direction != "[0. 0. 0. 0. 0. 0. 1.]":
+                    lanefollow = False
+                indexes.append(j)
+            if i % skip_steps == 0:
+                not_skipped += 1
+                data.append(df.iloc[indexes, :].copy())
+            elif not lanefollow:
+                non_skipped_turn += 1
+                data.append(df.iloc[indexes, :].copy())
+            else:
+                skipped_samples += 1
 
-stats.write("---------------------------------------- BEFORE FILTERING -------------------------------------------")
-stats.write("\n")
-stats.write("\n")
+print(str(len(data)) + " datasamples gathered")
+print(str(skipped_samples) + " samples not added due to skip_steps")
+sequence_data = data
+target_data = []
+for sequence in data:
+    target_data.append(sequence.iloc[-1, :])
 
-name = "BEFORE FILTERING"
-print_column_based_statistics(data, "Direction", name=name)
-print_column_based_statistics(data, "TL_state", name=name)
-print_column_based_statistics(data, "speed_limit", name=name)
+data = pd.DataFrame(target_data)
+if True:
+    print("writing statistics:")
+    stats = open(dataset + "_statistics.txt","w")
+    stats.write("\n")
+    stats.write("\n")
+    stats.write("======================================== DATA STATISTICS ========================================")
+    stats.write("\n")
+    stats.write("\n")
 
-print_brake_statistics(data, name)
-print_throttle_statistics(data, name)
-print_brake_vs_throttle(data, name)
-print_steering_statistics(data, name)
+    stats.write("---------------------------------------- BEFORE FILTERING -------------------------------------------")
+    stats.write("\n")
+    stats.write("\n")
 
-fig1, ax1 = plt.subplots()
-ax1.hist(data.Steer.values, 20)
-fig1.savefig("before_filtering")
+    name = "BEFORE FILTERING"
+    print("Direction")
+    print_column_based_statistics(data, "Direction", name=name)
+    print("TL_state")
+    print_column_based_statistics(data, "TL_state", name=name)
+    print("ohe_speed_limit")
+    print_column_based_statistics(data, "ohe_speed_limit", name=name)
+
+    print("brake")
+    print_brake_statistics(data, name)
+    print("throttle")
+    print_throttle_statistics(data, name)
+    print("brake vs throttle")
+    print_brake_vs_throttle(data, name)
+    print("steering")
+    print_steering_statistics(data, conf, name)
+
+    print("plotting")
+    fig1, ax1 = plt.subplots()
+    ax1.hist(data.Steer.values, 20)
+    fig1.savefig("before_filtering")
 
 if dataset == "Validation_data":
     stats.close()
     print("Filtering not applied to validation_data")
     exit()
-data = filter_input_based_on_steering(data, conf)
-data = filter_input_based_on_speed_and_tl(data, conf)
-data = filter_corrupt_input(data)
+
+sequence_data = filter_sequence_input_based_on_steering(sequence_data, conf)
+sequence_data = filter_sequence_input_based_on_not_moving(sequence_data, conf)
+sequence_data = filter_corrupt_sequence_input(sequence_data)
+
+target_data = []
+for sequence in sequence_data:
+    target_data.append(sequence.iloc[-1,: ])
+data = pd.DataFrame(target_data)
+
+print("writing statistics")
 stats.write("\n")
 stats.write("\n")
 stats.write("\n")
@@ -232,15 +297,23 @@ stats.write("\n")
 
 
 name = "AFTER FILTERING"
+print("Direction")
 print_column_based_statistics(data, "Direction", name=name)
+print("TL_state")
 print_column_based_statistics(data, "TL_state", name=name)
-print_column_based_statistics(data, "speed_limit", name=name)
+print("ohe_speed_limit")
+print_column_based_statistics(data, "ohe_speed_limit", name=name)
 
+print("brake")
 print_brake_statistics(data, name)
+print("throttle")
 print_throttle_statistics(data, name)
+print("brake vs throttle")
 print_brake_vs_throttle(data, name)
-print_steering_statistics(data, name)
+print("steering")
+print_steering_statistics(data, conf, name)
 
+print("plotting")
 fig2, ax2 = plt.subplots()
 ax2.hist(data.Steer.values, 20)
 fig2.savefig("after_filtering")

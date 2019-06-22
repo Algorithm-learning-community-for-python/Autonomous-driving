@@ -1,5 +1,5 @@
 
-from keras.optimizers import Adam
+from keras.optimizers import Adam, SGD
 
 class TrainConf:
     def __init__(self, **entries):
@@ -26,21 +26,36 @@ class Config(object):
         }
         self.train_conf = TrainConf(**args)
         self.model_type = "Spatiotemporal"
+        self.images_path = "/Updated_images/"
+
         self.train_valid_split = 0.2
         self.bottom_crop = 0
         self.top_crop = 165
         self.filter_input = True
-        self.filtering_degree = 0.3  # 0 = remove none, 1 = remove all
+        self.filtering_degree = 0.8  # 0 = remove none, 1 = remove all
         self.filter_threshold = 0.1
 
-        self.filtering_degree_speed = 0.70
-        self.filter_threshold_speed = 0.00001
+        self.filtering_degree_speed = 0.8
+        self.filter_threshold_speed = 0.001
         self.recordings_path = "/Measurments/modified_recording.csv"
         self.folder_index = -1
         self.add_noise = False
-        self.skip_steps = 2
-        self.step_size_training = 1
-        self.step_size_testing = 1
+        self.skip_steps = 1
+        self.step_size_training = 3
+        """
+        Step size testing is dependent on:
+        - sensor_tick during recording (defined in the recorder class)
+        - step_size during training
+        - fps during testing
+        - sensor_tick(0.1) #(or average_fps_trainging(2.43))
+        and it can be calculated by the following formula:
+        if sensor_tick:
+            step_size_testing = fps * sensor_tick * step_size_training
+        if average_fps:
+            step_size_testing = average_fps_trainging * fps
+        example step_size_training=3, sensor_tick = 0.1, fps=60  ==> step_size_testing=12
+        """ 
+        self.step_size_testing = 9
         self.available_columns = [
             "Throttle",
             "Reverse",
@@ -94,14 +109,14 @@ class Config(object):
             "Brake": True,
         }
         self.input_size_data = {
-            "Image": [345-(self.top_crop+self.bottom_crop), 460, 3],
+            "Image": [66, 200, 3], #"Image": [345-(self.top_crop+self.bottom_crop), 460, 3],
             "Direction": [7],
             "Speed": [1],
             "speed_limit": [1], 
             "ohe_speed_limit": [11],
             "TL_state": [3],
             "Output": 1,
-            "Sequence_length": 3,
+            "Sequence_length": 4,
         }
         self.output_size_data = {
             "Throttle": 1,
@@ -118,7 +133,11 @@ class Config(object):
             "output_Brake": None,
             "output_Steer": None,
         }
-
+        self.loss_weights={
+            'output_Throttle': 1.,
+            'output_Brake': 1.,
+            'output_Steer': 2.
+        }
         self.direction_categories = [
             "RoadOption.VOID",
             "RoadOption.LEFT",

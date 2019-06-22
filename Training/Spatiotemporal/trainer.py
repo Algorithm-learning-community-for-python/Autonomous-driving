@@ -2,13 +2,14 @@
 #pylint: disable=superfluous-parens
 import os
 import numpy as np
-from keras.callbacks import ModelCheckpoint, ProgbarLogger, EarlyStopping
-from Spatiotemporal.Networks.nvidia import load_network
+from keras.callbacks import ModelCheckpoint, EarlyStopping
+from Spatiotemporal.Networks.nvidiaa_v1 import load_network
 from Spatiotemporal.batch_generator import BatchGenerator
 from Spatiotemporal.data_configuration import Config
 from Misc.misc import save_results
 from Misc.misc import create_new_folder
-from Spatiotemporal.stop_training_on_request import StopTrainingOnInput
+from Misc.stop_training_on_request import StopTrainingOnInput
+
 class Trainer(object):
     """ Main class for training a new model """
     def __init__(self):
@@ -39,8 +40,8 @@ class Trainer(object):
 
     def initialise_generator_and_net(self):
         """ Creates a batch generator and a network handler"""
-        self.train_generator = BatchGenerator(self.conf, data="Training_data_v2")
-        self.validation_generator = BatchGenerator(self.conf, data="Validation_data_v2")
+        self.train_generator = BatchGenerator(self.conf, data="Training_data")
+        self.validation_generator = BatchGenerator(self.conf, data="Validation_data")
         self.network_handler = load_network(self.conf)
 
     def train(self):
@@ -48,6 +49,7 @@ class Trainer(object):
         self.network_handler.model.compile(
             loss=self.conf.loss_functions,
             optimizer=self.conf.train_conf.optimizer,
+            loss_weights=self.conf.loss_weights
         )
         self.history = self.network_handler.model.fit_generator(
             self.train_generator,

@@ -110,7 +110,7 @@ def load_network(conf):
     # CONV 4
     x = net.conv(x, 64, 3, 1, activation="relu")
 
-    # CONV 4
+    # CONV 5
     x = net.conv(x, 64, 3, 1, activation="relu")
 
     #x = net.dropout(x, rate=0.5)
@@ -127,17 +127,23 @@ def load_network(conf):
 
  
     #x = net.dense(x, 8, function="elu")
-    x = net.dense(x, 100, function="relu")
+    #x = net.dense(x, 100, function="relu")
 
-    x = net.dense(x, 50, function="relu") 
+    #x = net.dense(x, 50, function="relu") 
 
     #x = net.dropout(x, rate=0.5)
-    x = net.dense(x, 10)
+    #x = net.dense(x, 10)
 
     
     #######     OUTPUT DATA     #######
     outputs = []
     for measure in output_measures:
+        x_branched = net.dense(x, 100, function="relu")
+
+        x_branched = net.dense(x_branched, 50, function="relu")
+
+        x_branched = net.dense(x_branched, 10)
+
         """if measure == "Throttle" or measure == "Brake":
             x_branched = net.dense(x, 256, function="relu")
             #x_branched = net.dropout(x_branched, rate=0.5)
@@ -152,7 +158,7 @@ def load_network(conf):
         else:"""
 
         output_layer = net.dense(
-            x,
+            x_branched,
             conf.output_size_data[measure],
             function=conf.activation_functions["output_" + measure],
             name="output_" + measure

@@ -1,4 +1,5 @@
 
+""" Plays the recordings of all the recordings """
 # importing libraries 
 import cv2 
 import numpy as np 
@@ -9,16 +10,11 @@ PATH = '../../Training_data'
 #PATH = '../../Validation_data'
 #PATH = '../../Test_recordings'
 p = get_data_paths("Training_data_temp")
-#for folder in os.listdir(PATH):
-#    DATA_PATHS.append(PATH + "/" + folder)
 
-
-for path in p:
-    print(path)
+for path in p[15:]:
+    print(path.split("/")[-1])
     for filename in os.listdir(path):
-        #print(filename)
         if ".avi" in filename:
-            #print(filename)
             # Create a VideoCapture object and read from input file 
             cap = cv2.VideoCapture(path + "/" + filename)
 
@@ -38,12 +34,12 @@ for path in p:
                     # Display the resulting frame
 
                     cv2.namedWindow('Frame',cv2.WINDOW_NORMAL)
-                    cv2.resizeWindow('Frame', 920,690)
+                    cv2.resizeWindow('Frame', 2560, 1440)
 
                     cv2.imshow('Frame', frame)
 
                     # Press Q on keyboard to  exit
-                    if cv2.waitKey(10) & 0xFF == ord('q'):
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
                 
                 # Break the loop

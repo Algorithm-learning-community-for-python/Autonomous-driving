@@ -2,7 +2,7 @@
 #pylint: disable=superfluous-parens
 
 import argparse
-from keras.optimizers import Adam
+from keras.optimizers import Adam, RMSprop
 from Temporal.trainer import Trainer
 from Temporal.Networks.network_temporal import load_network as load_network0
 from Temporal.Networks.network_temporal_1 import load_network as load_network1
@@ -18,7 +18,7 @@ def train_single():
     #e = 10
     #b = 16
     #f = True
-    
+
     trainer = Trainer()
     trainer.initialise_generator_and_net()
     print("##########################################################################")
@@ -37,18 +37,18 @@ def train_multi():
     print("GRID SEARCH")
     recs = ["/Measurments/modified_recording.csv"] #"/Measurments/recording.csv", modified_recording
     batch_sizes = [16] #[8, 16, 32]
-    epochs = [30]
-    nets = [0, 1, 2, 3, 4, 5]
+    epochs = [50]
+    nets = [0, 1, 2]
     sigmoid = [False]#, True]
     filtering = [True]
-    learning_rates = [0.00012]  #[0.00001, 0.0001, 0.001]#, 0.00005, 0.0002]
+    learning_rates = [0.00001, 0.0001, 0.00015, 0.001, 0.01, 0.1]#, 0.00005, 0.0002]
     for recording_data in recs:
-        for s in sigmoid:
-            for f in filtering:
-                for b in batch_sizes:
-                    for e in epochs:
-                        for lr in learning_rates:
-                            for n in nets:
+        for n in nets:
+            for s in sigmoid:
+                for f in filtering:
+                    for b in batch_sizes:
+                        for e in epochs:
+                            for lr in learning_rates:
                                     
                                 print("##########################################################################")
                                 print("########################  NEW TRAINING   #################################")
@@ -65,8 +65,8 @@ def train_multi():
                                 trainer.conf.train_conf.batch_size = b
                                 trainer.conf.filter_input = f
                                 trainer.conf.recordings_path = recording_data
-                                #trainer.conf.train_conf.lr = lr
-                                #trainer.conf.train_conf.optimizer = Adam(lr=lr)
+                                trainer.conf.train_conf.lr = lr
+                                trainer.conf.train_conf.optimizer = RMSprop(lr=lr)
                                 if s:
                                     trainer.conf.loss_functions = {
                                         "output_Throttle": "mse", #Might be better with binary_crossentropy

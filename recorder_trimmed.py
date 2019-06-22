@@ -12,6 +12,7 @@ from __future__ import print_function
 
 import argparse
 import glob
+import datetime
 import logging
 import math
 import os
@@ -56,7 +57,7 @@ import carla
 from carla import ColorConverter as cc
 from agents.navigation.basic_agent import *
 from agents.navigation.local_planner import RoadOption
-
+from Misc.recording_to_video import recording_to_video
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
@@ -79,7 +80,7 @@ def get_actor_display_name(actor, truncate=250):
 # ==============================================================================
 
 class World(object):
-    def __init__(self, carla_world, hud):
+    def __init__(self, carla_world, hud, spawn_point_idx=None):
         self.world = carla_world
         self.map = self.world.get_map()
         self.hud = hud
@@ -87,7 +88,7 @@ class World(object):
         self.recorder = None
         self.collision_sensor = None
         self.actor_list = []
-
+        self.spawn_point_idx = spawn_point_idx
         self._actor_filter = 'vehicle.bmw.grandtourer'
         self.world.on_tick(hud.on_world_tick)
         self.restart()
@@ -152,9 +153,12 @@ class World(object):
                 self.collision_sensor.sensor.destroy()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         while self.player is None:
-            spawn_point = self.map.get_spawn_points()[142]
-            #spawn_points = self.map.get_spawn_points()
-            #spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
+            if self.spawn_point_idx is None:
+                spawn_points = self.map.get_spawn_points()
+                spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
+            else:
+                spawn_point = self.map.get_spawn_points()[self.spawn_point_idx]
+
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         self.collision_sensor = CollisionSensor(self.player)
 
@@ -166,11 +170,13 @@ class World(object):
 class HUD(object):
     def __init__(self):
         self.server_fps = 0
+        self.simulation_time = 0
         self._server_clock = pygame.time.Clock()
 
     def on_world_tick(self, timestamp):
         self._server_clock.tick()
         self.server_fps = self._server_clock.get_fps()
+        self.simulation_time = timestamp.elapsed_seconds
 
 
 # ==============================================================================
@@ -208,7 +214,7 @@ class CollisionSensor(object):
 
 
 class Recorder():
-    def __init__(self, world, agent, path, folder_name=None):
+    def __init__(self, world, agent, path, weather, folder_name=None):
         self.recording_text = []
         self.images = []
         self.world = world
@@ -217,7 +223,8 @@ class Recorder():
         self.folder_name = folder_name
         self.path = path
         self.controller_updates = 0
-
+        self.weather = weather
+        self.adding_noise = False
 
         self.camera_transform = carla.Transform(carla.Location(x=1.6, z=1.7))
         self._sensor = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
@@ -244,26 +251,31 @@ class Recorder():
         self.record_image(image)
 
 
-    def stop_recording(self):
-        if len(self.recording_text) > 0:
+    def stop_recording(self, failure=False):
+        if len(self.recording_text) > 100 and len(self.images) > 100:
+            if failure:
+                self.path = self.path + "/failures"
+            training_directory = self.path
             # define the name of the directory to be created
             if self.folder_name:
                 folder = self.folder_name
             else:
                 last_folder = 0
                 for folder in os.listdir(self.path):
-                    if folder == ".DS_Store" or folder == "store.h5":
+                    try:
+                        int(folder)
+                    except ValueError as ve:
                         continue
                     if int(folder) >= last_folder:
                         last_folder = int(folder)+1
                 folder = last_folder
-
             self.path = self.path + "/" + str(folder)
 
             try:
                 os.mkdir(self.path)
                 os.mkdir(self.path + "/Measurments")
                 os.mkdir(self.path + "/Images")
+                os.mkdir(self.path + "/" + str(self.weather))
 
             except OSError:
                 print ("Creation of the directory %s failed" % self.path)
@@ -286,10 +298,13 @@ class Recorder():
                 i += 1
             self.images = []
 
+            print("\n Creating video...")
+            recording_to_video(path=training_directory, cur_folder=folder)
+
     def record_output(self, world, frame_number):
         control = world.player.get_control()
         v = world.player.get_velocity()
-        speed_limit = world.player.get_speed_limit() - 10
+        speed_limit = world.player.get_speed_limit()
         if world.player.is_at_traffic_light():
             is_at_traffic_light = 1
         else:
@@ -299,25 +314,30 @@ class Recorder():
             direction = RoadOption.VOID
         else:
             direction = self.agent._local_planner._target_road_option 
-
+        if self.adding_noise:
+            try:
+                steer = self.agent.throttle_to_steering[str(control.throttle)]
+            except KeyError as k:
+                print("used_approximation")
+                steer = self.agent.steering_buffer.pop()
+        else:
+            steer = control.steer
         self.recording_text.append({
             'frame': frame_number,
             'Speed': np.round((3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))/100, 4),
             'Throttle': control.throttle,
-            'Steer': control.steer,
+            'Steer': steer,
             'Brake': control.brake,
-            'Reverse': control.reverse,
-            'Hand brake': control.hand_brake,
-            'Manual': control.manual_gear_shift,
-            'Gear': control.gear,
             'speed_limit': float(speed_limit)/100,
             'at_TL': is_at_traffic_light,
-            #'TL': traffic_light,
             'TL_state': traffic_light_state,
             'fps': self.world.hud.server_fps,
             'Direction': direction,
-            'controller_updates': self.controller_updates,
-            "time(s)": pygame.time.get_ticks() / 1000 
+            'Controller_updates': self.controller_updates,
+            "Real_time(s)": pygame.time.get_ticks() / 1000,
+            "Simulation_time(s)": datetime.timedelta(seconds=int(world.hud.simulation_time)),
+            "Noise": self.adding_noise 
+
         })
 
     def record_image(self, image):
@@ -332,13 +352,30 @@ def game_loop(args):
     pygame.init()
     pygame.font.init()
     world = None
-    
+
+    start = None
+    stop = None
+    use_90kmh_road = random.randint(0, 19)
+    if use_90kmh_road < 4:
+        if use_90kmh_road == 0:
+            start = 142
+            stop = 162
+        elif use_90kmh_road == 1:
+            start = 165
+            stop = 145
+        elif use_90kmh_road == 2:
+            start = 49
+            stop = 47
+        else:
+            start = 126
+            stop = 48
+
     try:
         client = carla.Client(args.host, args.port)
         client.set_timeout(4.0)
 
         hud = HUD()
-        world = World(client.get_world(), hud)
+        world = World(client.get_world(), hud, spawn_point_idx=start)
 
         n_vehicles = random.randint(1, 3) * 80
 
@@ -347,15 +384,34 @@ def game_loop(args):
         train_weathers = [
             carla.WeatherParameters.ClearNoon,
             carla.WeatherParameters.CloudyNoon,
+            carla.WeatherParameters.ClearNoon, #DUPLICATE TO GET HIGHER PROBABILITY OF NICE WEATHER
+            carla.WeatherParameters.CloudyNoon, #DUPLICATE TO GET HIGHER PROBABILITY OF NICE WEATHER
+            carla.WeatherParameters.ClearNoon, #DUPLICATE TO GET HIGHER PROBABILITY OF NICE WEATHER
+            carla.WeatherParameters.CloudyNoon, #DUPLICATE TO GET HIGHER PROBABILITY OF NICE WEATHER
+
             carla.WeatherParameters.WetNoon,
             carla.WeatherParameters.SoftRainNoon,
-
 
             carla.WeatherParameters.ClearSunset,
             carla.WeatherParameters.CloudySunset,
             carla.WeatherParameters.WetSunset,
             carla.WeatherParameters.SoftRainSunset,
+        ]
+        train_weather_names = [
+            "ClearNoon-" + str(carla.WeatherParameters.ClearNoon),
+            "CloudyNoon-" + str(carla.WeatherParameters.CloudyNoon),
+            "ClearNoon-" + str(carla.WeatherParameters.ClearNoon),
+            "CloudyNoon-" + str(carla.WeatherParameters.CloudyNoon),
+            "ClearNoon-" + str(carla.WeatherParameters.ClearNoon),
+            "CloudyNoon-" + str(carla.WeatherParameters.CloudyNoon),
 
+            "WetNoon-" + str(carla.WeatherParameters.WetNoon),
+            "SoftRainNoon-" + str(carla.WeatherParameters.SoftRainNoon),
+
+            "ClearSunset-" + str(carla.WeatherParameters.ClearSunset),
+            "CloudySunset-" + str(carla.WeatherParameters.CloudySunset),
+            "WetSunset-" + str(carla.WeatherParameters.WetSunset),
+            "SoftRainSunset-" + str(carla.WeatherParameters.SoftRainSunset)
         ]
 
         test_weathers = [
@@ -367,16 +423,26 @@ def game_loop(args):
             carla.WeatherParameters.HardRainSunset,
             carla.WeatherParameters.MidRainSunset,
         ]
-        random_weather = 1
+        if args.random_weather == 1:
+            index = random.randint(0, len(train_weathers)-1)
+            weather = train_weathers[index]
+            weather_description = train_weather_names[index]
 
-        if random_weather == 1:
-            world.world.set_weather(np.random.choice(train_weathers))
+        else:
+            weather = train_weathers[1]
+            weather_description = train_weather_names[1]
+
+        world.world.set_weather(weather)
 
         agent = BasicAgent(world.player)
 
         start_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
-        #destination = random.choice(world.map.get_spawn_points())
-        destination = world.map.get_spawn_points()[162] #55
+        if stop is None:
+            destination = random.choice(world.map.get_spawn_points())
+        else:
+            destination = world.map.get_spawn_points()[stop]
+
+        
 
         agent.set_destination((destination.location.x,
                                destination.location.y,
@@ -386,7 +452,7 @@ def game_loop(args):
                 destination.location)
         
         print("Initial distance: " + str(distance))
-        recorder = Recorder(world, agent, args.path)
+        recorder = Recorder(world, agent, args.path, weather_description)
         world.recorder = recorder
         counter = 0
         fps_que =[]
@@ -440,13 +506,14 @@ def game_loop(args):
                 if counter < 50:
                     print("Didn't get far enough, not storing recording")
                 elif not target_reached:
-                    print("Didn't reach the target, not storing recording")
+                    print("Didn't reach the target, storing recording as failure")
+                    recorder.stop_recording(failure=True)
                 else:
                     print("Storing images and measurments...")
                     recorder.stop_recording()
                 return
 
-            speed_limit = world.player.get_speed_limit()-10
+            speed_limit = world.player.get_speed_limit()
             agent._local_planner.set_speed(speed_limit)
             recorder.controller_updates += 1
             control = agent.run_step(recorder)
@@ -469,6 +536,12 @@ def main():
         '--path',
         default='Training_data_temp',
         help='Where to store data')
+    argparser.add_argument(
+        '-w', '--random_weather',
+        metavar='W',
+        default=1,
+        type=int,
+        help='set to 0 use cloudynoon every time')
     argparser.add_argument(
         '-v', '--verbose',
         action='store_true',

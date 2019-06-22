@@ -6,8 +6,8 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard
 from Temporal.Networks.network_temporal import load_network as load_network
 from Temporal.batch_generator import BatchGenerator
 from Temporal.data_configuration import Config
-from Temporal.stop_training_on_request import StopTrainingOnInput
 
+from Misc.stop_training_on_request import StopTrainingOnInput
 from Misc.misc import save_results
 from Misc.misc import create_new_folder
 
@@ -50,6 +50,7 @@ class Trainer(object):
         self.network_handler.model.compile(
             loss=self.conf.loss_functions,
             optimizer=self.conf.train_conf.optimizer,
+            loss_weights=self.conf.loss_weights
         )
         self.history = self.network_handler.model.fit_generator(
             self.train_generator,
@@ -60,9 +61,9 @@ class Trainer(object):
             callbacks=[
                 ModelCheckpoint(self.checkpoint_path_loss, monitor='loss', save_best_only=True, period=int(np.floor(self.conf.train_conf.epochs/10))),
                 ModelCheckpoint(self.checkpoint_path_val_loss, monitor='val_loss', save_best_only=True),
-                EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=1, mode='auto', baseline=None, restore_best_weights=True),
+                EarlyStopping(monitor='val_loss', min_delta=0, patience=7, verbose=1, mode='auto', baseline=None, restore_best_weights=True),
                 #TensorBoard(self.validation_generator2, int(len(self.validation_generator2)/16), 16, log_dir="{}/{}".format(self.logs_dir, time.time()), histogram_freq=1, batch_size=16)
-                TensorBoard(histogram_freq=0, batch_size=16, write_images=False, write_grads=False),
+                #TensorBoard(histogram_freq=0, batch_size=16, write_images=False, write_grads=False),
                 StopTrainingOnInput()
             ],
             use_multiprocessing=True,

@@ -7,12 +7,11 @@ conf = Config()
 conf.train_conf.batch_size = 16
 conf.filter_input = True
 #generator = BatchGenerator(conf)
-step_size = 8
+"""step_size = 8
 seq_len = 3
 for i in range(((seq_len-1)*step_size+1), 0, -step_size):
-    print(i)
+    print(i)"""
 
-exit()
 g = BatchGenerator(conf)
 input_measures = [key for key in conf.available_columns if conf.input_data[key]]
 output_measures = [key for key in conf.available_columns if conf.output_data[key]]
