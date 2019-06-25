@@ -1,23 +1,29 @@
 """ Module that tests multiple models at multiple tracks """
 #pylint: disable=invalid-name
+# import warnings filter
+from warnings import simplefilter
+# ignore all future warnings
+simplefilter(action='ignore', category=FutureWarning)
+
 import os
 import argparse
-from autonomous_driver import game_loop
+from autonomous_driver_trimmed import game_loop
 
 # Which model architecture to use
-model_type = "Spatial"
-#model_type = "Spatiotemporal"
+#model_type = "Spatial"
+model_type = "Spatiotemporal"
 #model_type = "Temporal"
 models_path = "Training/" + model_type + "/Stored_models/"
 
 # Which models to test
 all_models = False
-chosen_folders = [18]
+chosen_folders = [5]
 
 # Which checkpoints to test
 train_loss = False
 val_loss = True
-best_checkpoint_only = True
+best_checkpoint_only = False
+every_n_epoch = 4
 threshold_epoch = 2 # Only applicable if best_checkpoint_only is false
 
 # Define which tracks to test
@@ -96,6 +102,24 @@ argparser.add_argument(
     default=2000,
     type=int,
     help='TCP port to listen to (default: 2000)')
+argparser.add_argument(
+    '-w', '--random_weather',
+    metavar='W',
+    default=1,
+    type=int,
+    help='set to 0 use clear noon every time')
+argparser.add_argument(
+    '-c', '--cars',
+    metavar='W',
+    default=1,
+    type=int,
+    help='set to 0 to not include cars')
+argparser.add_argument(
+    '-t', '--traffic_light',
+    metavar='W',
+    default=1,
+    type=int,
+    help='set to 0 to ignore traffic lights')
 
 # Test the models
 
@@ -112,13 +136,19 @@ waypoints_town_2 = [
     [46, 45]
 ]
 if town == 1:
+    i = 0
     for model in best_val_models:
-        for track in tracks_town_1:
-            args = argparser.parse_args()
-            args.model = model
-            args.model_type = model_type
-            args.waypoints = waypoints_town_1[track]
-            game_loop(args)
+        if i % every_n_epoch == 0:
+            for track in tracks_town_1:
+                args = argparser.parse_args()
+                args.traffic_light = 0
+                args.cars = 0
+                args.random_weather = 0
+                args.model = model
+                args.model_type = model_type
+                args.waypoints = waypoints_town_1[track]
+                game_loop(args)
+        i += 1
 
 if town == 2:
     for model in best_val_models:

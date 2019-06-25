@@ -91,7 +91,7 @@ from agents.navigation.roaming_agent import *
 from agents.navigation.basic_agent import *
 from agents.navigation.local_planner import RoadOption
 
-
+import time
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
 # ==============================================================================
@@ -784,9 +784,11 @@ class CameraManager(object):
 
 
 class Recorder():
-    def __init__(self, world, agent, path, folder_name=None):
+    def __init__(self, world, agent, path, clock, display, weather_description, folder_name=None):
         self.recording_text = []
         self.images = []
+        self.clock = clock
+        self.display = display
         self.world = world
         self.agent = agent
         self.temp_steering = []
@@ -794,6 +796,7 @@ class Recorder():
         self.path = path
         self.record = False
         self.adding_noise = False
+        self.weather = weather_description
         self.camera_transform = carla.Transform(carla.Location(x=1.6, z=1.7))
         self._sensor = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
         server_world = world.player.get_world()
@@ -802,8 +805,8 @@ class Recorder():
         bp.set_attribute('image_size_x', '320')
         bp.set_attribute('image_size_y', '240')
         #bp.set_attribute('fov', '120')
-        bp.set_attribute('sensor_tick', '0.10')
-
+        bp.set_attribute('sensor_tick', '0.05')
+        self.counter = 0
         self._sensor.append(bp)
         self.sensor = server_world.spawn_actor(
             self._sensor[-1],
@@ -811,36 +814,63 @@ class Recorder():
             attach_to=self.world.player)
 
         weak_self = weakref.ref(self)
-        self.sensor.listen(lambda image: Recorder.record(weak_self, image))
+        self.sensor.listen(lambda image: Recorder.update(weak_self, image))
 
     @staticmethod
-    def record(weak_self, image):
+    def update(weak_self, image):
         self = weak_self()
-        if self.record:
-            if self.agent._local_planner._target_road_option != None:
-                self.record_output(self.world, image.frame_number)
-                self.record_image(image)
+        self.counter += 1
 
-    def stop_recording(self):
-        if len(self.recording_text) > 0:
+        
+        # Update the agent with information from the world
+        self.agent.update_information(self.world)
+        
+        #Calculat new control command
+        control, actual_steer = self.agent.run_step(self)
+        control.manual_gear_shift = False
+
+        # update steering if noise has been added in basic agent
+        if actual_steer is not None:
+            steer = actual_steer
+        else:
+            steer = control.steer
+
+        # Apply control
+        self.world.player.apply_control(control)
+        self.counter += 1
+
+        # Store information - counter used to only store 10 fps
+        if self.counter % 2 == 1 and self.record:
+            self.record_output(control, image.frame_number, steer)
+            self.record_image(image)
+
+
+    def stop_recording(self, failure=False):
+        if len(self.recording_text) > 100 and len(self.images) > 100:
             # define the name of the directory to be created
+            if failure:
+                self.path = self.path + "/failures"
+            training_directory = self.path
+
             if self.folder_name:
                 folder = self.folder_name
             else:
                 last_folder = 0
                 for folder in os.listdir(self.path):
-                    if folder == ".DS_Store" or folder == "store.h5":
+                    try:
+                        int(folder)
+                    except ValueError as ve:
                         continue
                     if int(folder) >= last_folder:
                         last_folder = int(folder)+1
                 folder = last_folder
-
             self.path = self.path + "/" + str(folder)
 
             try:
                 os.mkdir(self.path)
                 os.mkdir(self.path + "/Measurments")
                 os.mkdir(self.path + "/Images")
+                os.mkdir(self.path + "/" + str(self.weather))
 
             except OSError:
                 print ("Creation of the directory %s failed" % self.path)
@@ -848,7 +878,7 @@ class Recorder():
                 print ("Successfully created the directory %s " % self.path)
 
             keys = self.recording_text[0].keys()
-            with open(self.path + '/Measurments/recording.csv', 'wb') as f:
+            with open(self.path + '/Measurments/recording.csv', 'w') as f:
                 dict_writer = csv.DictWriter(f, keys)
                 dict_writer.writeheader()
                 dict_writer.writerows(self.recording_text)
@@ -859,47 +889,76 @@ class Recorder():
                 if i % (math.ceil(l/100)) == 0:
                     print("\r Storing image " + str(i) + " of " + str(l), end="")
                 image.save_to_disk(self.path + '/Images/%08d' % image.frame_number)
-                
                 i += 1
             self.images = []
         
 
-    def record_output(self, world, frame_number):
-        control = world.player.get_control()
-        v = world.player.get_velocity()
-        speed_limit = world.player.get_speed_limit()
-        if world.player.is_at_traffic_light():
-            is_at_traffic_light = 1
-        else:
-            is_at_traffic_light = 0
-        if self.adding_noise:
-            steer = self.agent.steering_buffer.popleft()
-        else:
-            steer = control.steer
-        traffic_light_state = self.agent.light_state
+    def record_output(self, control, frame_number, steer):
         self.recording_text.append({
             'frame': frame_number,
-            'Speed': np.round((3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))/100, 4),
+            'Speed': np.round(self.agent.speed/100, 4),
             'Throttle': control.throttle,
             'Steer': steer,
             'Brake': control.brake,
-            'Reverse': control.reverse,
-            'Hand brake': control.hand_brake,
-            'Manual': control.manual_gear_shift,
-            'Gear': control.gear,
-            'speed_limit': float(speed_limit)/100,
-            'at_TL': is_at_traffic_light,
-            #'TL': traffic_light,
-            'TL_state': traffic_light_state,
+            'speed_limit': float(self.agent.speed_limit)/100,
+            'at_TL': self.agent.is_at_traffic_light,
+            'TL_state': self.agent.light_state,
             'fps': self.world.hud.server_fps,
-            'Direction': self.agent._local_planner._target_road_option,
-            "Noise": self.adding_noise 
+            'Direction': self.agent.direction,
+            'Upcoming_direction': self.agent.upcoming_direction_short,
+            "Real_time(s)": pygame.time.get_ticks() / 1000,
+            "Simulation_time(s)": datetime.timedelta(seconds=int(self.world.hud.simulation_time)),
+            "Noise": self.adding_noise,
         })
+
     def record_image(self, image):
         image.convert(cc.Raw)
         self.images.append(image)
   
 
+def set_weather(world, random_weather):
+    train_weathers = [
+        carla.WeatherParameters.ClearNoon,
+        carla.WeatherParameters.CloudyNoon,
+        carla.WeatherParameters.WetNoon,
+        carla.WeatherParameters.SoftRainNoon,
+
+
+        carla.WeatherParameters.ClearSunset,
+        carla.WeatherParameters.CloudySunset,
+        carla.WeatherParameters.WetSunset,
+        carla.WeatherParameters.SoftRainSunset,
+    ]
+    train_weather_names = [
+        "ClearNoon-" + str(carla.WeatherParameters.ClearNoon),
+        "CloudyNoon-" + str(carla.WeatherParameters.CloudyNoon),
+        "WetNoon-" + str(carla.WeatherParameters.WetNoon),
+        "SoftRainNoon-" + str(carla.WeatherParameters.SoftRainNoon),
+
+        "ClearSunset-" + str(carla.WeatherParameters.ClearSunset),
+        "CloudySunset-" + str(carla.WeatherParameters.CloudySunset),
+        "WetSunset-" + str(carla.WeatherParameters.WetSunset),
+        "SoftRainSunset-" + str(carla.WeatherParameters.SoftRainSunset)
+    ]
+    test_weathers = [
+        carla.WeatherParameters.WetCloudyNoon,
+        carla.WeatherParameters.MidRainyNoon,
+        carla.WeatherParameters.HardRainNoon,
+
+        carla.WeatherParameters.WetCloudySunset,
+        carla.WeatherParameters.HardRainSunset,
+        carla.WeatherParameters.MidRainSunset,
+    ]
+    if random_weather == 1:
+        index = random.randint(0, len(train_weathers)-1)
+        weather = train_weathers[index]
+        weather_description = train_weather_names[index]
+    else:
+        weather = train_weathers[1]
+        weather_description = train_weather_names[1]
+
+    world.world.set_weather(weather)
+    return weather_description
 # ==============================================================================
 # -- game_loop() ---------------------------------------------------------
 # ==============================================================================
@@ -908,6 +967,22 @@ def game_loop(args):
     pygame.init()
     pygame.font.init()
     world = None
+    start_index = None
+    stop_index = None
+    use_90kmh_road = random.randint(0, 19)
+    if use_90kmh_road < 4:
+        if use_90kmh_road == 0:
+            start_index = 142
+            stop_index = 162
+        elif use_90kmh_road == 1:
+            start_index = 165
+            stop_index = 145
+        elif use_90kmh_road == 2:
+            start_index = 49
+            stop_index = 47
+        else:
+            start_index = 126
+            stop_index = 48
 
     try:
         client = carla.Client(args.host, args.port)
@@ -918,24 +993,60 @@ def game_loop(args):
             pygame.HWSURFACE | pygame.DOUBLEBUF)
 
         hud = HUD(args.width, args.height)
-        world = World(client.get_world(), hud, args.filter, spawn_point_idx=44)
+        world = World(client.get_world(), hud, args.filter, spawn_point_idx=None)
         controller = KeyboardControl(world, False)
-        world.spawn_npc(client, n_vehicles=140)
-
-        agent = BasicAgent(world.player)
-        spawn_point = world.map.get_spawn_points()[162]
-        agent.set_destination((spawn_point.location.x,
-                               spawn_point.location.y,
-                               spawn_point.location.z))
         
-        recorder = Recorder(world, agent, args.path)
+        #Spawn cars
+        print(args.cars)
+        if args.cars == 1:
+            n_vehicles = random.randint(1, 3) * 50
+            world.spawn_npc(client, n_vehicles=n_vehicles)
+
+        
+        #Set weather
+        weather_description = set_weather(world, args.random_weather)
+
+
+        # Ignore traffic light or not
+        if args.traffic_light == 0:
+            ignore_traffic_light = True
+        else:
+            ignore_traffic_light = False
+
+        #Use noise or not
+        if args.noise == 1:
+            add_noise = True
+        else:
+            add_noise = False
+        #Spawn agent
+        agent = BasicAgent(world.player, ignore_traffic_light=ignore_traffic_light, add_noise=add_noise)
+
+        # Set start positiong and destination
+        start_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
+        if stop_index is None:
+            destination = random.choice(world.map.get_spawn_points())
+        else:
+            destination = world.map.get_spawn_points()[stop_index]
+        agent.set_destination((destination.location.x,
+                               destination.location.y,
+                               destination.location.z))
+
+        #Get initial distance
+        distance = start_waypoint.transform.location.distance(destination.location)
+        print("Initial distance: " + str(distance))
+
+        # init clock
+        clock = pygame.time.Clock()
+
+         # Initiate the recorder
+        recorder = Recorder(world, agent, args.path, clock, display, weather_description)
         world.recorder = recorder
         recorder.record = True
-
-        clock = pygame.time.Clock()
-        # Start controller straight away
-        #world.camera_manager.toggle_recording()
-
+        counter = 0
+        stop = False
+        target_reached = False
+        not_moving_count = 0
+        previous_distance = 0
         while True:
             if controller.parse_events(client, world, clock, recorder):
                 return
@@ -946,31 +1057,63 @@ def game_loop(args):
 
             # Stop recorder when target destination has been reached
             if len(agent._local_planner._waypoints_queue) == 0:
-                world.camera_manager.toggle_recording()
-                recorder.stop_recording()
                 print("Target Reached, stopping recording session...")
+                target_reached = True
+                stop = True
+
+            counter += 1
+            if counter % 200 == 0:
+                print("step: " + str(counter))
+                cur_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
+                distance = cur_waypoint.transform.location.distance(destination.location)
+                print("Distance to goal= " + str(distance))
+                if abs(distance - previous_distance) < 2:
+                    not_moving_count += 1
+                else:
+                    not_moving_count = 0
+                previous_distance = distance
+                if not_moving_count > 20:
+                    print("Not moving anymore... quiting recording")
+                    stop = True
+            
+            # Stop recorder when target destination has been reached
+            if stop:
+                recorder.record = False
+                if recorder.sensor is not None:
+                    recorder.sensor.destroy()
+                if world.collision_sensor.sensor is not None:
+                    world.collision_sensor.sensor.destroy()
+                if world is not None:
+                    world.player.destroy()
+                    print('\ndestroying %d actors' % len(world.actor_list))
+                    client.apply_batch([carla.command.DestroyActor(x) for x in world.actor_list])
+                if counter < 50:
+                    print("Didn't get far enough, not storing recording")
+                elif not target_reached:
+                    print("Didn't reach the target, storing recording as failure")
+                    recorder.stop_recording(failure=True)
+                else:
+                    print("Storing images and measurments...")
+                    recorder.stop_recording()
                 return
 
             world.tick(clock)
             world.render(display)
             pygame.display.flip()
-            speed_limit = world.player.get_speed_limit()
-            agent._local_planner.set_speed(speed_limit)
-
-            control = agent.run_step(recorder)
-            control.manual_gear_shift = False
-
-            world.player.apply_control(control)
-
     finally:
-        if world is not None:
-            try:
-                if recorder.sensor is not None:
-                    recorder.sensor.destroy()
-            except UnboundLocalError:
-                print("No recorder object")
-            world.destroy()
-
+        try:
+            if recorder.sensor is not None:
+                recorder.sensor.destroy()
+        except UnboundLocalError:
+            print("No recorder object")
+        try:
+            if world is not None:
+                #world.player.destroy()
+                print('\ndestroying %d actors' % len(world.actor_list))
+                client.apply_batch([carla.command.DestroyActor(x) for x in world.actor_list])
+                world.destroy()
+        except UnboundLocalError:
+            print("No World object")
         pygame.quit()
 
 
@@ -984,8 +1127,32 @@ def main():
         description='CARLA Manual Control Client')
     argparser.add_argument(
         '--path',
-        default='Training_data_temp',
+        default='Training_data_test',
         help='Where to store data')
+    argparser.add_argument(
+        '-w', '--random_weather',
+        metavar='W',
+        default=1,
+        type=int,
+        help='set to 0 use clear noon every time')
+    argparser.add_argument(
+        '-c', '--cars',
+        metavar='W',
+        default=1,
+        type=int,
+        help='set to 0 to not include cars')
+    argparser.add_argument(
+        '-t', '--traffic_light',
+        metavar='W',
+        default=1,
+        type=int,
+        help='set to 0 to ignore traffic lights')
+    argparser.add_argument(
+        '-n', '--noise',
+        metavar='W',
+        default=0,
+        type=int,
+        help='set to 1 add steering noise')
     argparser.add_argument(
         '-v', '--verbose',
         action='store_true',

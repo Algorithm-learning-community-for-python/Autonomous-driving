@@ -16,7 +16,7 @@ def get_one_hot_encoded(categories, values):
     label_encoder.fit(categories)
     integer_encoded = label_encoder.transform(categories)
     integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)
-    onehot_encoder = OneHotEncoder(sparse=False)
+    onehot_encoder = OneHotEncoder(categories="auto", sparse=False)
     onehot_encoder = onehot_encoder.fit(integer_encoded)
     # Encode values
     integer_encoded = label_encoder.transform(values)
@@ -32,19 +32,42 @@ def filter_input_based_on_steering(dataframe, conf):
         _ = dataframe.ohe_speed_limit
         speed_limit_rep_20 = ("ohe_speed_limit", "[0. 0. 1. 0. 0. 0. 0. 0. 0. 0. 0.]")
         speed_limit_rep_30 = ("ohe_speed_limit", "[0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0.]")
+        speed_limit_rep_60 = ("ohe_speed_limit", "[0. 0. 0. 0. 0. 0. 1. 0. 0. 0. 0.]")
+        speed_limit_rep_90 = ("ohe_speed_limit", "[0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0.]")
 
     except AttributeError:
         speed_limit_rep_20 = ("speed_limit", 0.2)
         speed_limit_rep_30 = ("speed_limit", 0.3)
+        speed_limit_rep_60 = ("speed_limit", 0.6)
+        speed_limit_rep_90 = ("speed_limit", 0.9)
+
 
     droppable = dataframe[(
         (np.abs(dataframe.Steer) < conf.filter_threshold) & \
+        # only filter from lanefollow
         ((dataframe.Direction == "[0. 0. 1. 0. 0. 0. 0.]") | (dataframe.Direction == "[0. 0. 0. 0. 0. 0. 1.]") | (dataframe.Direction == "RoadOption.LANEFOLLOW")) & \
-        ((dataframe[speed_limit_rep_20[0]] == speed_limit_rep_20[1]) | (dataframe[speed_limit_rep_30[0]] == speed_limit_rep_30[1]))  # only filtering from 20km/h and 30km/h since we still want a lot of data from high speed
+        # only filtering from 30km/h since we still want a lot of data from high speed
+        (dataframe[speed_limit_rep_30[0]] == speed_limit_rep_30[1]) & \
+        # Dont remove samples where the car is breaking
+        (dataframe.Brake == 0)
     )].index
+
+    droppable90 = dataframe[(
+        (np.abs(dataframe.Steer) < conf.filter_threshold) & \
+        ((dataframe.Direction == "[0. 0. 1. 0. 0. 0. 0.]") | (dataframe.Direction == "[0. 0. 0. 0. 0. 0. 1.]") | (dataframe.Direction == "RoadOption.LANEFOLLOW")) & \
+        ((dataframe[speed_limit_rep_90[0]] == speed_limit_rep_90[1])) & \
+        (dataframe.Brake == 0)
+    )].index
+
     count_dropped = int(np.ceil(conf.filtering_degree*len(droppable)))
-    print("Dropping " + str(count_dropped) + " out of " + str(len(droppable)) + " droppable, and " + str(len(dataframe.index)) + " total")
+    count_dropped90 = int(np.ceil(conf.filtering_degree_90*len(droppable90)))
+    print("Dropping " + str(count_dropped) + " from 30km/h out of " + str(len(droppable)) + " droppable, and " + str(len(dataframe.index)) + " total")
+    print("Dropping " + str(count_dropped90) + " from 90km/h out of " + str(len(droppable90)) + " droppable, and " + str(len(dataframe.index)) + " total")
+
     droppable = np.random.choice(droppable, size=count_dropped, replace=False)
+    if count_dropped90 > 0:
+        droppable90 = np.random.choice(droppable90, size=count_dropped90, replace=False)
+        droppable = np.concatenate([droppable, droppable90])
     new_df = dataframe.drop(droppable)
     print("Dataset size after filtering: " + str(len(new_df.index)))
     print("\n")
@@ -67,26 +90,28 @@ def filter_sequence_input_based_on_steering(sequences, conf):
     for sequence in sequences:
         # Add or remove the current sequence
         follow_lane = True
-        speed_limit_20 = True
+        speed_limit_30 = True
         low_steering = True
-        no_car_in_front = True
-        # check if any of the images is from a turn
-        for direction in sequence["Direction"].values:
-            if direction != "[0. 0. 1. 0. 0. 0. 0.]" and direction != "[0. 0. 0. 0. 0. 0. 1.]":
-                follow_lane = False
+        braking = False
 
+        # Only filter from Lanefollow
+        for direction in sequence["Direction"].values:
+            if direction != "[0. 0. 1. 0. 0. 0. 0.]" and direction != "[0. 0. 0. 0. 0. 0. 1.]" and \
+                direction != "RoadOption.LANEFOLLOW" and direction != "RoadOption.VOID":
+                follow_lane = False
         if not follow_lane:
             filtered_sequences.append(sequence)
             continue
 
-        # Only filter from speed limit 20 (need samples with high speed limits)
+        # Only filter from speed limit 30
         for speed_limit in sequence[speed_limit_rep_30[0]].values:
             if speed_limit != speed_limit_rep_30[1]:
-                speed_limit_20 = False
-        if not speed_limit_20:
+                speed_limit_30 = False
+        if not speed_limit_30:
             filtered_sequences.append(sequence)
             continue
-        # filter away samples where all steerings are below the threshold
+
+        # Only filter if steering is below threshold value
         for steering in sequence["Steer"].values:
             if steering > conf.filter_threshold:
                 low_steering = False
@@ -94,25 +119,28 @@ def filter_sequence_input_based_on_steering(sequences, conf):
             filtered_sequences.append(sequence)
             continue
 
-        # Only filter if we can assume that there is no car in front
-        for speed in sequence["Speed"].values:
-            if speed < 0.1:
-                no_car_in_front = False
+        # Only filter if it isnt following another car
+        #for speed in sequence["Speed"].values:
+        #    if speed < 0.25:
+        #        no_car_in_front = False
 
+        # Dont remove if the car is breaking
         for brake in sequence["Brake"].values:
-            if brake != 0:
-                no_car_in_front = False
+            if brake == 1:
+                braking = True
+        if braking:
+            filtered_sequences.append(sequence)
+            continue
 
         # Only filter away a random subsample
         if random.randint(0, 10) > (10 - (10 * conf.filtering_degree)):
             # filter away the sample
-            if no_car_in_front:
-                count_dropped += 1
+            count_dropped += 1
             # Only filter away 40% of the samples where we assume there is a car in front
-            elif random.randint(0, 10) > 6:
-                count_dropped += 1
-            else:
-                filtered_sequences.append(sequence)
+            #if random.randint(0, 10) > 6:
+            #    count_dropped += 1
+            #else:
+            #    filtered_sequences.append(sequence)
         else:
             filtered_sequences.append(sequence)
 
@@ -152,7 +180,7 @@ def filter_sequence_input_based_on_speed_and_tl(sequences, conf):
             filtered_sequences.append(sequence)
             continue
 
-        if sequence["TL_state"].values[-1] != "[0. 1. 0.]":
+        if sequence["TL_state"].values[-1] != "[0. 1. 0.]" and sequence["TL_state"].values[-1] != "Red":
             filtered_sequences.append(sequence)
             continue
 
@@ -166,45 +194,46 @@ def filter_sequence_input_based_on_speed_and_tl(sequences, conf):
     print("\n")
     return filtered_sequences
 
+def filter_input_based_on_not_moving(dataframe, conf):
+    """ Filters dataframe consisting of sequences based on steering """
+    print("\n")
+    print("-------------------- FILTERING AWAY SAMPLES WHERE THE CAR IS STANDING STILL -----------------------")
+    droppable = dataframe[(dataframe.Speed < conf.filter_threshold_speed)].index
+    s = int(np.ceil(conf.filtering_degree_speed*len(droppable)))
+    print("Dropping " + str(s) + " out of " + str(len(droppable)) + " droppable, and " + str(len(dataframe.index)) + " total" )
+    droppable = np.random.choice(droppable, size=s, replace=False)
+    new_df = dataframe.drop(droppable)
+    print("Dataset size after filtering: " + str(len(new_df.index)))
+    print("\n")
+    return new_df
+
 def filter_sequence_input_based_on_not_moving(sequences, conf):
     """ Filters dataframe consisting of sequences based on the car not moving """
     print("\n")
-    print("-------------------- FILTERING AWAY SAMPLES WHERE THE CAR IS STANDING STILL DUE TO BRAKING -----------------------")
+    print("-------------------- FILTERING AWAY SAMPLES WHERE THE CAR IS STANDING STILL -----------------------")
     count_dropped = 0
     filtered_sequences = []
-    standing_still_count = 0
-    full_brake_count = 0
     for sequence in sequences:
         # Add or remove the current sequence
         speeds = sequence["Speed"].values
-        brakes = sequence["Brake"].values
-        standing_still = True
-        braking = True
-        #for speed in speeds:
-        #    if speed > conf.filter_threshold_speed:
-        if speeds[-1] > conf.filter_threshold_speed:
-            standing_still = False
-        if brakes[-1] != 1:
-            braking = False
-        #for tl_state in tl_states:
-        #    if tl_state != "[0. 1. 0.]":
-        #if tl_states[-1] != "[0. 1. 0.]":
-        #    tl_is_red = False
 
-        if standing_still:
-            standing_still_count += 1
-        if braking:
-            full_brake_count += 1
-        
+        standing_still = True
+        # Include sequences where it is either driving, just stopped
+        for speed in speeds:
+            if speed > conf.filter_threshold_speed:
+                standing_still = False
+
+        # Include sequences where it just start to accelerate
+        if sequence["Brake"].values[-1] == 0:
+            standing_still = False
+
         drop = random.randint(0, 10) > (10 - (10 * conf.filtering_degree_speed))
-        if standing_still and braking and drop:
+        if standing_still and drop:
             count_dropped += 1
         else:
             filtered_sequences.append(sequence)
 
     print("Dropped " + str(count_dropped) + " out of " + str(len(sequences)))
-    #print("Standing still count: " + str(standing_still_count))
-    #print("Full brake count: " + str(full_brake_count))
     print("Dataset size after filtering: " + str(len(filtered_sequences)))
     print("\n")
     return filtered_sequences

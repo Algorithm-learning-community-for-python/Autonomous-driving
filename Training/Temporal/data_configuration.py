@@ -31,10 +31,10 @@ class Config(object):
         self.top_crop = 165
         self.filter_input = False
         self.filtering_degree = 0.9  # 0 = remove none, 1 = remove all
-        self.filter_threshold = 0.1
+        self.filter_threshold = 0.02
 
-        self.filtering_degree_speed = 0.9
-        self.filter_threshold_speed = 0.001
+        self.filtering_degree_speed = 0.8
+        self.filter_threshold_speed = 0.0001
         self.recordings_path = "/Measurments/modified_recording.csv"
         self.images_path = "/Updated_images/"
 

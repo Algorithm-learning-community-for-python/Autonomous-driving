@@ -43,6 +43,39 @@ def test_image_resize(path):
             cv2.imshow("image", img)
             cv2.waitKey(0)
 
+def test__noise(path):
+    CONF = Config()
+    MEASURMENT_PATH = "/Measurments/recording.csv"
+    DATA_PATHS = []
+    #PATH = '../../Training_data'
+    #PATH = '../../Validation_data'
+    PATH = "../../" + path 
+    cur_folder = None
+    if cur_folder == None:
+        for folder in os.listdir(PATH):
+            if folder == "store.h5":
+                continue
+            DATA_PATHS.append(PATH + "/" + folder)
+    else:
+        DATA_PATHS.append(PATH + "/" + str(cur_folder))
+
+    for path in DATA_PATHS:
+        print(path)
+        df = pd.read_csv(path + MEASURMENT_PATH)
+        img_array = []
+        for j, row in df.iterrows():
+            if row["Noise"]:
+                print(row)
+                cur_frame = row["frame"]
+                img = get_image(path + "/Images/", cur_frame)
+                img_size = CONF.input_size_data["Image"]
+                img = img[CONF.top_crop:, :, :]
+                img = img[..., ::-1]
+                img = cv2.resize(img,(1080,720))
+                cv2.imshow("image", img)
+                cv2.waitKey(0)
+
+
 def move_training_data(path):
     DATA_PATHS = get_data_paths(path)
     start_index = 0
@@ -98,9 +131,10 @@ def find_empty_folders(path):
             print("Measurments: " + str(len(df.index)))
 
     
-path = "Training_data_temp"
+path = "Training_data_no_cars_with_noise"
 #find_empty_folders(path)
 #get_average_step_size(path)
 #find_empty_folders(path)
 #test_image_resize(path)
-move_training_data(path)
+#move_training_data(path)
+test__noise(path)

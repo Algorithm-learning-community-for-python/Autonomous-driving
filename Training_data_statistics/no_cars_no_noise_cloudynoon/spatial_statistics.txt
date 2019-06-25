@@ -1,0 +1,318 @@
+
+
+======================================== DATA STATISTICS ========================================
+
+Training data: no_cars_no_noise_cloudynoon
+
+---------------------------------------- Before filtering -------------------------------------------
+
+############################ Direction based statistics  ############################
+
+Sample count before filtering
+Total samples: 23182
+Per Direction: 
+Direction
+RoadOption.LANEFOLLOW    19762
+RoadOption.LEFT           1275
+RoadOption.RIGHT           830
+RoadOption.STRAIGHT       1315
+Name: frame, dtype: int64
+
+Mean values per Direction
+For all samples: 
+   Throttle     at_TL        frame  Real_time(s)     Steer  Noise  speed_limit     Brake        fps     Speed
+0  0.674144  0.400699  2031.056035     23.208524 -0.003933    0.0     0.400319  0.045984  60.399459  0.326485
+
+Per Direction: 
+                       Throttle     at_TL        frame  Real_time(s)     Steer  Noise  speed_limit     Brake        fps     Speed
+Direction                                                                                                                        
+RoadOption.LANEFOLLOW  0.691103  0.337365  2032.875215     23.190365 -0.002834    0.0      0.41768  0.040937  60.215044  0.342629
+RoadOption.LEFT        0.537186  0.785098  1800.749020     18.817255 -0.221692    0.0      0.30000  0.097255  62.400401  0.199608
+RoadOption.RIGHT       0.545779  0.845783  2245.867470     27.331325  0.298201    0.0      0.30000  0.160241  66.903213  0.200233
+RoadOption.STRAIGHT    0.633087  0.698859  2091.434221     25.136882 -0.000004    0.0      0.30000  0.000000  57.125753  0.286579
+
+
+
+############################ TL_state based statistics  ############################
+
+Sample count before filtering
+Total samples: 23182
+Per TL_state: 
+TL_state
+Green    23182
+Name: frame, dtype: int64
+
+Mean values per TL_state
+For all samples: 
+   Throttle     at_TL        frame  Real_time(s)     Steer  Noise  speed_limit     Brake        fps     Speed
+0  0.674144  0.400699  2031.056035     23.208524 -0.003933    0.0     0.400319  0.045984  60.399459  0.326485
+
+Per TL_state: 
+          Throttle     at_TL        frame  Real_time(s)     Steer  Noise  speed_limit     Brake        fps     Speed
+TL_state                                                                                                            
+Green     0.674144  0.400699  2031.056035     23.208524 -0.003933    0.0     0.400319  0.045984  60.399459  0.326485
+
+
+
+############################ speed_limit based statistics  ############################
+
+Sample count before filtering
+Total samples: 23182
+Per speed_limit: 
+speed_limit
+0.3    19066
+0.6      480
+0.9     3636
+Name: frame, dtype: int64
+
+Mean values per speed_limit
+For all samples: 
+   Throttle     at_TL        frame  Real_time(s)     Steer  Noise  speed_limit     Brake        fps     Speed
+0  0.674144  0.400699  2031.056035     23.208524 -0.003933    0.0     0.400319  0.045984  60.399459  0.326485
+
+Per speed_limit: 
+             Throttle     at_TL        frame  Real_time(s)     Steer  Noise     Brake        fps     Speed
+speed_limit                                                                                               
+0.3          0.633818  0.442568  2012.646124     23.018672 -0.004939    0.0  0.047834  60.978277  0.256021
+0.6          0.647123  0.027083  1921.395833     20.600000 -0.000223    0.0  0.291667  57.744597  0.532203
+0.9          0.889167  0.230473  2142.068207     24.548405  0.000854    0.0  0.003850  57.714802  0.668819
+
+
+
+############################ Steer statistics ############################
+based on speed_limit and Direction
+
+Total samples per speed_limit and Direction: 
+speed_limit  Direction            
+0.3          RoadOption.LANEFOLLOW    15646
+             RoadOption.LEFT           1275
+             RoadOption.RIGHT           830
+             RoadOption.STRAIGHT       1315
+0.6          RoadOption.LANEFOLLOW      480
+0.9          RoadOption.LANEFOLLOW     3636
+Name: frame, dtype: int64
+
+Mean value per speed_limit and Direction: All samples: -0.003932716521982313
+speed_limit  Direction            
+0.3          RoadOption.LANEFOLLOW   -0.003772
+             RoadOption.LEFT         -0.221692
+             RoadOption.RIGHT         0.298201
+             RoadOption.STRAIGHT     -0.000004
+0.6          RoadOption.LANEFOLLOW   -0.000223
+0.9          RoadOption.LANEFOLLOW    0.000854
+Name: Steer, dtype: float64
+
+
+
+
+############################ frame statistics ############################
+based on Direction and Steer_binned
+
+Total samples per Direction and Steer_binned: 
+Direction              Steer_binned  
+RoadOption.LANEFOLLOW  (-1.002, -0.8]       16.0
+                       (-0.8, -0.6]         17.0
+                       (-0.6, -0.4]         92.0
+                       (-0.4, -0.2]        497.0
+                       (-0.2, 0.0]       11088.0
+                       (0.0, 0.2]         7468.0
+                       (0.2, 0.4]          379.0
+                       (0.4, 0.6]          150.0
+                       (0.6, 0.8]           27.0
+                       (0.8, 1.0]           28.0
+RoadOption.LEFT        (-1.002, -0.8]        1.0
+                       (-0.8, -0.6]         48.0
+                       (-0.6, -0.4]         61.0
+                       (-0.4, -0.2]        594.0
+                       (-0.2, 0.0]         553.0
+                       (0.0, 0.2]           18.0
+                       (0.2, 0.4]            NaN
+                       (0.4, 0.6]            NaN
+                       (0.6, 0.8]            NaN
+                       (0.8, 1.0]            NaN
+RoadOption.RIGHT       (-1.002, -0.8]        NaN
+                       (-0.8, -0.6]          NaN
+                       (-0.6, -0.4]          NaN
+                       (-0.4, -0.2]          NaN
+                       (-0.2, 0.0]           8.0
+                       (0.0, 0.2]          331.0
+                       (0.2, 0.4]          222.0
+                       (0.4, 0.6]          196.0
+                       (0.6, 0.8]           47.0
+                       (0.8, 1.0]           26.0
+RoadOption.STRAIGHT    (-1.002, -0.8]        NaN
+                       (-0.8, -0.6]          NaN
+                       (-0.6, -0.4]          NaN
+                       (-0.4, -0.2]          NaN
+                       (-0.2, 0.0]         755.0
+                       (0.0, 0.2]          560.0
+                       (0.2, 0.4]            NaN
+                       (0.4, 0.6]            NaN
+                       (0.6, 0.8]            NaN
+                       (0.8, 1.0]            NaN
+Name: frame, dtype: float64
+
+############## RANGE OF STEERING SAMPLES before filtering ##############
+Samples steering with absolute value less than 0.02 and lanefollow: 16300
+Samples steering more than 0.02: 5339
+
+
+
+
+
+---------------------------------------- After filtering -------------------------------------------
+
+
+Filtered with: Threshold steering: 0.02Degree steering: 0.9Threshold speed: 0.0001Degree speed(standing_still): 0.9
+
+############################ Direction based statistics  ############################
+
+Sample count after filtering
+Total samples: 10670
+Per Direction: 
+Direction
+RoadOption.LANEFOLLOW    7250
+RoadOption.LEFT          1275
+RoadOption.RIGHT          830
+RoadOption.STRAIGHT      1315
+Name: frame, dtype: int64
+
+Mean values per Direction
+For all samples: 
+   Throttle     at_TL        frame  Real_time(s)    Steer  Noise  speed_limit     Brake        fps     Speed
+0  0.674961  0.435895  2040.824367     23.097751 -0.00838    0.0     0.416851  0.099906  61.201558  0.325718
+
+Per Direction: 
+                       Throttle     at_TL        frame  Real_time(s)     Steer  Noise  speed_limit     Brake        fps     Speed
+Direction                                                                                                                        
+RoadOption.LANEFOLLOW  0.721574  0.279862  2050.391034     22.996000 -0.007483    0.0     0.471972  0.111586  61.077253  0.369360
+RoadOption.LEFT        0.537186  0.785098  1800.749020     18.817255 -0.221692    0.0     0.300000  0.097255  62.400401  0.199608
+RoadOption.RIGHT       0.545779  0.845783  2245.867470     27.331325  0.298201    0.0     0.300000  0.160241  66.903213  0.200233
+RoadOption.STRAIGHT    0.633087  0.698859  2091.434221     25.136882 -0.000004    0.0     0.300000  0.000000  57.125753  0.286579
+
+
+
+############################ TL_state based statistics  ############################
+
+Sample count after filtering
+Total samples: 10670
+Per TL_state: 
+TL_state
+Green    10670
+Name: frame, dtype: int64
+
+Mean values per TL_state
+For all samples: 
+   Throttle     at_TL        frame  Real_time(s)    Steer  Noise  speed_limit     Brake        fps     Speed
+0  0.674961  0.435895  2040.824367     23.097751 -0.00838    0.0     0.416851  0.099906  61.201558  0.325718
+
+Per TL_state: 
+          Throttle     at_TL        frame  Real_time(s)    Steer  Noise  speed_limit     Brake        fps     Speed
+TL_state                                                                                                           
+Green     0.674961  0.435895  2040.824367     23.097751 -0.00838    0.0     0.416851  0.099906  61.201558  0.325718
+
+
+
+############################ speed_limit based statistics  ############################
+
+Sample count after filtering
+Total samples: 10670
+Per speed_limit: 
+speed_limit
+0.3    8352
+0.6     480
+0.9    1838
+Name: frame, dtype: int64
+
+Mean values per speed_limit
+For all samples: 
+   Throttle     at_TL        frame  Real_time(s)    Steer  Noise  speed_limit     Brake        fps     Speed
+0  0.674961  0.435895  2040.824367     23.097751 -0.00838    0.0     0.416851  0.099906  61.201558  0.325718
+
+Per speed_limit: 
+             Throttle     at_TL        frame  Real_time(s)     Steer  Noise     Brake        fps     Speed
+speed_limit                                                                                               
+0.3          0.630530  0.503592  2032.141643     23.039033 -0.011032    0.0  0.109195  62.139375  0.239053
+0.6          0.647123  0.027083  1921.395833     20.600000 -0.000223    0.0  0.291667  57.744597  0.532203
+0.9          0.884127  0.235038  2111.468444     24.016866  0.001541    0.0  0.007617  57.842850  0.665602
+
+
+
+############################ Steer statistics ############################
+based on speed_limit and Direction
+
+Total samples per speed_limit and Direction: 
+speed_limit  Direction            
+0.3          RoadOption.LANEFOLLOW    4932
+             RoadOption.LEFT          1275
+             RoadOption.RIGHT          830
+             RoadOption.STRAIGHT      1315
+0.6          RoadOption.LANEFOLLOW     480
+0.9          RoadOption.LANEFOLLOW    1838
+Name: frame, dtype: int64
+
+Mean value per speed_limit and Direction: All samples: -0.008379561892480073
+speed_limit  Direction            
+0.3          RoadOption.LANEFOLLOW   -0.011553
+             RoadOption.LEFT         -0.221692
+             RoadOption.RIGHT         0.298201
+             RoadOption.STRAIGHT     -0.000004
+0.6          RoadOption.LANEFOLLOW   -0.000223
+0.9          RoadOption.LANEFOLLOW    0.001541
+Name: Steer, dtype: float64
+
+
+
+
+############################ frame statistics ############################
+based on Direction and Steer_binned
+
+Total samples per Direction and Steer_binned: 
+Direction              Steer_binned  
+RoadOption.LANEFOLLOW  (-1.002, -0.8]      16.0
+                       (-0.8, -0.6]        17.0
+                       (-0.6, -0.4]        92.0
+                       (-0.4, -0.2]       497.0
+                       (-0.2, 0.0]       3682.0
+                       (0.0, 0.2]        2362.0
+                       (0.2, 0.4]         379.0
+                       (0.4, 0.6]         150.0
+                       (0.6, 0.8]          27.0
+                       (0.8, 1.0]          28.0
+RoadOption.LEFT        (-1.002, -0.8]       1.0
+                       (-0.8, -0.6]        48.0
+                       (-0.6, -0.4]        61.0
+                       (-0.4, -0.2]       594.0
+                       (-0.2, 0.0]        553.0
+                       (0.0, 0.2]          18.0
+                       (0.2, 0.4]           NaN
+                       (0.4, 0.6]           NaN
+                       (0.6, 0.8]           NaN
+                       (0.8, 1.0]           NaN
+RoadOption.RIGHT       (-1.002, -0.8]       NaN
+                       (-0.8, -0.6]         NaN
+                       (-0.6, -0.4]         NaN
+                       (-0.4, -0.2]         NaN
+                       (-0.2, 0.0]          8.0
+                       (0.0, 0.2]         331.0
+                       (0.2, 0.4]         222.0
+                       (0.4, 0.6]         196.0
+                       (0.6, 0.8]          47.0
+                       (0.8, 1.0]          26.0
+RoadOption.STRAIGHT    (-1.002, -0.8]       NaN
+                       (-0.8, -0.6]         NaN
+                       (-0.6, -0.4]         NaN
+                       (-0.4, -0.2]         NaN
+                       (-0.2, 0.0]        755.0
+                       (0.0, 0.2]         560.0
+                       (0.2, 0.4]           NaN
+                       (0.4, 0.6]           NaN
+                       (0.6, 0.8]           NaN
+                       (0.8, 1.0]           NaN
+Name: frame, dtype: float64
+
+############## RANGE OF STEERING SAMPLES after filtering ##############
+Samples steering with absolute value less than 0.02 and lanefollow: 3924
+Samples steering more than 0.02: 5203
+
+

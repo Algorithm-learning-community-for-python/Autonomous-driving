@@ -114,13 +114,13 @@ def recording_to_video(path="../../Test_recordings", cur_folder=None, file_name=
         else:
             name = "/" + file_name.replace("/", "-") + ".avi"
             name2 = "/" + file_name.replace("/", "-") + "_hsv.avi"
-        out = cv2.VideoWriter(path + name, cv2.VideoWriter_fourcc(*'DIVX'), 60, size)
+        out = cv2.VideoWriter(path + name, cv2.VideoWriter_fourcc(*'DIVX'), 20, size)
         
         for i in range(len(img_array)):
             out.write(img_array[i])
         out.release()
         if use_hsv:
-            out = cv2.VideoWriter(path + name2, cv2.VideoWriter_fourcc(*'DIVX'), 60, size)
+            out = cv2.VideoWriter(path + name2, cv2.VideoWriter_fourcc(*'DIVX'), 20, size)
             for i in range(len(img_array)):
                 out.write(hsv_array[i])
             out.release()

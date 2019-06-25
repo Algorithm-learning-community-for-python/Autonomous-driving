@@ -935,7 +935,7 @@ def game_loop(args):
 
         world = World(client.get_world(), hud, start_waypoint=args.waypoints[0])
         n_vehicles = 80
-        world.spawn_npc(client, n_vehicles=n_vehicles)
+        #world.spawn_npc(client, n_vehicles=n_vehicles)
 
         train_weathers = [
             carla.WeatherParameters.ClearNoon,

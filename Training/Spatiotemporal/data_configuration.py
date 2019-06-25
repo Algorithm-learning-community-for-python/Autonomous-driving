@@ -32,16 +32,16 @@ class Config(object):
         self.bottom_crop = 0
         self.top_crop = 165
         self.filter_input = True
-        self.filtering_degree = 0.8  # 0 = remove none, 1 = remove all
-        self.filter_threshold = 0.1
+        self.filtering_degree = 0.9  # 0 = remove none, 1 = remove all
+        self.filter_threshold = 0.02
 
-        self.filtering_degree_speed = 0.8
-        self.filter_threshold_speed = 0.001
+        self.filtering_degree_speed = 0.9
+        self.filter_threshold_speed = 0.0001
         self.recordings_path = "/Measurments/modified_recording.csv"
         self.folder_index = -1
         self.add_noise = False
         self.skip_steps = 1
-        self.step_size_training = 3
+        self.step_size_training = 2
         """
         Step size testing is dependent on:
         - sensor_tick during recording (defined in the recorder class)
@@ -55,7 +55,7 @@ class Config(object):
             step_size_testing = average_fps_trainging * fps
         example step_size_training=3, sensor_tick = 0.1, fps=60  ==> step_size_testing=12
         """ 
-        self.step_size_testing = 9
+        self.step_size_testing = 1
         self.available_columns = [
             "Throttle",
             "Reverse",
@@ -116,7 +116,7 @@ class Config(object):
             "ohe_speed_limit": [11],
             "TL_state": [3],
             "Output": 1,
-            "Sequence_length": 4,
+            "Sequence_length": 5,
         }
         self.output_size_data = {
             "Throttle": 1,

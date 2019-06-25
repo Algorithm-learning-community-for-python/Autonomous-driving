@@ -1,9 +1,13 @@
 #!/bin/bash
 # My first script
 
-#export PYTHONPATH="$PYTHONPATH:/home/xr-10/Carla-9.5/PythonAPI:/home/xr-10/Carla-9.5/PythonAPI:/home/xr-10/Carla-9.5/PythonAPI/Training:/home/xr-10/anaconda3/envs/carla_driver/lib/python27.zip:/home/xr-10/anaconda3/envs/carla_driver/lib/python2.7:/home/xr-10/anaconda3/envs/carla_driver/lib/python2.7/plat-linux2:/home/xr-10/anaconda3/envs/carla_driver/lib/python2.7/lib-tk:/home/xr-10/anaconda3/envs/carla_driver/lib/python2.7/lib-old:/home/xr-10/anaconda3/envs/carla_driver/lib/python2.7/lib-dynload:/home/xr-10/.local/lib/python2.7/site-packages:/home/xr-10/anaconda3/envs/carla_driver/lib/python2.7/site-packages:carla/dist/carla-0.9.5-py2.7-linux-x86_64.egg:carla"
+
+
+# FROM OLD ITERATION
+
+#cars_noise_random_weather
 sudo echo "Fetching root priveliged"
-for i in {1..400} 
+for i in {1..61} 
 do
 	echo "Starting Carla"
 	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
@@ -16,16 +20,474 @@ do
 	echo "#############################################################################################"
 	echo "#############################################################################################"
 	echo ""
-	echo "------------------------     Iteration $i out of 400     ------------------------------------"
+	echo "------------------------     Iteration $i out of 61     ------------------------------------"
 	echo ""
 	echo "#############################################################################################"
 	echo "#############################################################################################"
 	echo "#############################################################################################"
 	echo "#############################################################################################"
 	echo "starting recorder"
-	python2 recorder_trimmed.py --path Training_data_temp #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	python2 recorder_trimmed.py --path Training_data/cars_noise_random_weather -c 1 -t 1 -w 1 -n 1 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
 	echo "killing Carla"
 	kill -SIGINT $pid
 	sudo fuser -k -n tcp 2000
 done
 
+#cars_no_noise_random_weather
+sudo echo "Fetching root priveliged"
+for i in {1..21} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 61     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Training_data/cars_no_noise_random_weather -c 1 -t 1 -w 1 -n 0 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+
+#cars_no_noise_random_weather
+sudo echo "Fetching root priveliged"
+for i in {1..21} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 61     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Validation_data/cars_no_noise_random_weather -c 1 -t 1 -w 1 -n 0 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# NO CARS NO NOISE in CLOUDYNOON
+sudo echo "Fetching root priveliged"
+for i in {1..31} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 30     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Training_data/no_cars_no_noise_cloudynoon -c 0 -t 0 -w 0 -n 0 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+
+sudo echo "Fetching root priveliged"
+for i in {1..11} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 30     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Validation_data/no_cars_no_noise_cloudynoon -c 0 -t 0 -w 0 -n 0 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+#no_cars_noise_cloudynoon 
+sudo echo "Fetching root priveliged"
+for i in {1..31} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 30     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Training_data/no_cars_noise_cloudynoon -c 0 -t 0 -w 0 -n 1 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+
+sudo echo "Fetching root priveliged"
+for i in {1..11} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 30     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Validation_data/no_cars_noise_cloudynoon -c 0 -t 0 -w 0 -n 1 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+#no_cars_no_noise_random_weather
+sudo echo "Fetching root priveliged"
+for i in {1..31} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 30     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Training_data/no_cars_no_noise_random_weather -c 0 -t 0 -w 1 -n 0 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+sudo echo "Fetching root priveliged"
+for i in {1..11} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 30     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Validation_data/no_cars_no_noise_random_weather -c 0 -t 0 -w 1 -n 0 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+
+#no_cars_noise_random_weather
+sudo echo "Fetching root priveliged"
+for i in {1..31} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 30     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Training_data/no_cars_noise_random_weather -c 0 -t 0 -w 1 -n 1 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+
+#no_cars_noise_random_weather
+sudo echo "Fetching root priveliged"
+for i in {1..11} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 30     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Validation_data/no_cars_noise_random_weather -c 0 -t 0 -w 1 -n 1 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+
+#cars_no_noise_cloudynoon
+sudo echo "Fetching root priveliged"
+for i in {1..61} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 61     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Training_data/cars_no_noise_cloudynoon -c 1 -t 1 -w 0 -n 1 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+#cars_no_noise_cloudynoon
+sudo echo "Fetching root priveliged"
+for i in {1..21} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 61     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Validation_data/cars_no_noise_cloudynoon -c 1 -t 1 -w 0 -n 1 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+
+#cars_noise_random_weather
+sudo echo "Fetching root priveliged"
+for i in {1..61} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 61     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Training_data/cars_noise_random_weather -c 1 -t 1 -w 1 -n 1 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+
+#cars_noise_random_weather
+sudo echo "Fetching root priveliged"
+for i in {1..21} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 61     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Validation_data/cars_noise_random_weather -c 1 -t 1 -w 1 -n 1 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+
+#cars_no_noise_random_weather
+sudo echo "Fetching root priveliged"
+for i in {1..61} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 61     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Training_data/cars_no_noise_random_weather -c 1 -t 1 -w 1 -n 0 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
+
+#cars_no_noise_random_weather
+sudo echo "Fetching root priveliged"
+for i in {1..21} 
+do
+	echo "Starting Carla"
+	DISPLAY= ../CarlaUE4.sh /Game/Carla/Maps/Town01 -benchmark -fps=30 & 
+	pid=$!	
+	sleep 10
+
+	echo "Carla PID: $pid"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo ""
+	echo "------------------------     Iteration $i out of 61     ------------------------------------"
+	echo ""
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "#############################################################################################"
+	echo "starting recorder"
+	python2 recorder_trimmed.py --path Validation_data/cars_no_noise_random_weather -c 1 -t 1 -w 1 -n 0 #> output_log/stdoutrecorder$i.txt 2> output_log/stderrecorder$i.txt & 
+	echo "killing Carla"
+	kill -SIGINT $pid
+	sudo fuser -k -n tcp 2000
+done
