@@ -12,7 +12,7 @@ input_measures = [key for key in conf.available_columns if conf.input_data[key]]
 output_measures = [key for key in conf.available_columns if conf.output_data[key]]
 
 print("Length of generator: " + str(len(g)))
-
+exit()
 
 for b in range(len(g)):
     n = g[b]

@@ -21,7 +21,7 @@ class Config(object):
             "optimizer": Adam(lr),
             "lr": lr,
             "metrics": None,
-            "epochs": 20,
+            "epochs": 30,
             "batch_size": 16,
         }
         self.train_conf = TrainConf(**args)
@@ -30,7 +30,7 @@ class Config(object):
         self.bottom_crop = 0
         self.top_crop = 165
         self.filter_input = True
-        self.filtering_degree = 0.9  # 0 = remove none, 1 = remove all
+        self.filtering_degree = 0.8  # 0 = remove none, 1 = remove all
         self.filtering_degree_90 = 0.5
         self.filter_threshold = 0.02
 
@@ -42,6 +42,17 @@ class Config(object):
         self.add_noise = False
 
         self.skip_steps = 1
+
+        self.data_paths = [
+            #"cars_noise_random_weather",
+            #"cars_no_noise_cloudynoon",
+            #"cars_no_noise_random_weather",
+            "no_cars_noise_cloudynoon",
+            "no_cars_noise_random_weather",
+            "no_cars_no_noise_cloudynoon",
+            "no_cars_no_noise_random_weather"
+
+        ]
 
         self.available_columns = [
             "Throttle",

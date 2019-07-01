@@ -22,9 +22,9 @@ def extend_steering_commands(dataframe):
     """
     for index, row in dataframe.iterrows():
         if row.Direction != "RoadOption.LANEFOLLOW" and row.Direction != "RoadOption.VOID":
-            rows_to_change = 20
+            rows_to_change = 6
             if index > rows_to_change:
-                for i in range(index-20, index):
+                for i in range(index-6, index):
                     if dataframe.loc[i, "Direction"] != "RoadOption.LANEFOLLOW" and \
                         dataframe.loc[i, "Direction"] != row.Direction:
                         rows_to_change = (index - 1) - i
@@ -76,7 +76,7 @@ def update_measurements(path):
         if df.iloc[0].Steer == 0 and df.iloc[0].Brake == 0 and df.iloc[0].Throttle == 0:
             df = df.drop(index=0) #remove two first since the car is in the air 
             df = df.reset_index()    
-        #df = extend_steering_commands(df)
+        df = extend_steering_commands(df)
         #print(path)
         one_hot_encode_fields(df)
         pad_frame(df)
@@ -115,9 +115,9 @@ def update_images(dir_path="../../Training_data_temp", cur_folder=None, file_nam
 root_folder = "Training_data"
 paths = os.listdir("../../" + root_folder)
 for p in paths:
-    if "no_cars" in p:
-        folder_path = root_folder + "/" + p
-        print("Updating images for " + p)
-        update_images(dir_path=folder_path, cur_folder=None)
-        print("Updating measurments for " + p)
-        update_measurements(folder_path)
+    #if "no_cars" in p:
+    folder_path = root_folder + "/" + p
+    #print("Updating images for " + p)
+    #update_images(dir_path=folder_path, cur_folder=None)
+    print("Updating measurments for " + p)
+    update_measurements(folder_path)

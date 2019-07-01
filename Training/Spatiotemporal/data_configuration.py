@@ -55,7 +55,18 @@ class Config(object):
             step_size_testing = average_fps_trainging * fps
         example step_size_training=3, sensor_tick = 0.1, fps=60  ==> step_size_testing=12
         """ 
-        self.step_size_testing = 1
+        self.step_size_testing = 6
+
+        self.data_paths = [
+            #"cars_noise_random_weather",
+            #"cars_no_noise_cloudynoon",
+            #"cars_no_noise_random_weather",
+            "no_cars_noise_cloudynoon",
+            "no_cars_noise_random_weather",
+            "no_cars_no_noise_cloudynoon",
+            "no_cars_no_noise_random_weather"
+
+        ]
         self.available_columns = [
             "Throttle",
             "Reverse",
@@ -116,7 +127,7 @@ class Config(object):
             "ohe_speed_limit": [11],
             "TL_state": [3],
             "Output": 1,
-            "Sequence_length": 5,
+            "Sequence_length": 3,
         }
         self.output_size_data = {
             "Throttle": 1,

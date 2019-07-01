@@ -13,7 +13,7 @@ output_measures = [key for key in conf.available_columns if conf.output_data[key
 
 print("Length of generator: " + str(len(g)))
 
-
+exit()
 for i in range(75000, len( g)):
     n = g[i]
     #sprint("Progress: " + str(i))

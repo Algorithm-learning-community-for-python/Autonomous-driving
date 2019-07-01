@@ -23,7 +23,10 @@ class BatchGenerator(Sequence):
         self.seq_len = self.conf.input_size_data["Sequence_length"]
         self.data = None
         self.data_type = data
-        self.data_paths = get_data_paths(data)
+        self.data_paths = []
+        for folder in conf.data_paths:
+            self.data_paths.extend(get_data_paths(data + "/" + folder))
+
         self.input_measures = [
             key for key in self.conf.available_columns if self.conf.input_data[key]
             ]

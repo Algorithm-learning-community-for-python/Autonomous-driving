@@ -16,7 +16,9 @@ class BatchGenerator(Sequence):
         self.img_size = self.conf.input_size_data["Image"]
         self.batch_size = self.conf.train_conf.batch_size
         self.data = None
-        self.data_paths = get_data_paths(data)
+        self.data_paths = []
+        for folder in conf.data_paths:
+            self.data_paths.extend(get_data_paths(data + "/" + folder))
         self.input_measures = [
             key for key in self.conf.available_columns if self.conf.input_data[key]
             ]
@@ -72,7 +74,7 @@ class BatchGenerator(Sequence):
 
     def get_measurements_recordings(self, data):
         dfs = []
-        training_size = int(len(self.data_paths) * 0.5)
+        training_size = int(len(self.data_paths) * 1)
         for i, path in enumerate(self.data_paths[:training_size]):
             df = pd.read_csv(path + self.conf.recordings_path)
             df["Images_path"] = path + self.conf.images_path

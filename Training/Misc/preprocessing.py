@@ -81,16 +81,23 @@ def filter_sequence_input_based_on_steering(sequences, conf):
         _ = sequences[0].ohe_speed_limit
         speed_limit_rep_20 = ("ohe_speed_limit", "[0. 0. 1. 0. 0. 0. 0. 0. 0. 0. 0.]")
         speed_limit_rep_30 = ("ohe_speed_limit", "[0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0.]")
+        speed_limit_rep_60 = ("ohe_speed_limit", "[0. 0. 0. 0. 0. 0. 1. 0. 0. 0. 0.]")
+        speed_limit_rep_90 = ("ohe_speed_limit", "[0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0.]")
+
     except AttributeError:
         speed_limit_rep_20 = ("speed_limit", 0.2)
         speed_limit_rep_30 = ("speed_limit", 0.3)
+        speed_limit_rep_60 = ("speed_limit", 0.6)
+        speed_limit_rep_90 = ("speed_limit", 0.9)
 
     count_dropped = 0
     filtered_sequences = []
     for sequence in sequences:
         # Add or remove the current sequence
         follow_lane = True
-        speed_limit_30 = True
+        speed_limit_30 = False
+        speed_limit_60 = False
+        speed_limit_90 = False
         low_steering = True
         braking = False
 
@@ -103,11 +110,18 @@ def filter_sequence_input_based_on_steering(sequences, conf):
             filtered_sequences.append(sequence)
             continue
 
-        # Only filter from speed limit 30
+        # Filter from 30km/h and filter 90km/h with a different threshold (means that 50% of the 90km/h will not have the chance to be filtered out)
         for speed_limit in sequence[speed_limit_rep_30[0]].values:
-            if speed_limit != speed_limit_rep_30[1]:
-                speed_limit_30 = False
-        if not speed_limit_30:
+            if speed_limit == speed_limit_rep_30[1]:
+                speed_limit_30 = True
+            if speed_limit == speed_limit_rep_60[1]:
+                speed_limit_60 = True
+            if speed_limit == speed_limit_rep_90[1]:
+                speed_limit_90 = True
+        if speed_limit_60:
+            filtered_sequences.append(sequence)
+            continue
+        elif speed_limit_90 and random.randint(0,9) > conf.filtering_degree_90 * 10:
             filtered_sequences.append(sequence)
             continue
 
@@ -118,6 +132,7 @@ def filter_sequence_input_based_on_steering(sequences, conf):
         if not low_steering:
             filtered_sequences.append(sequence)
             continue
+
 
         # Only filter if it isnt following another car
         #for speed in sequence["Speed"].values:

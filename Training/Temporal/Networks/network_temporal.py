@@ -159,10 +159,8 @@ def load_network(conf):
         inputs.append(input_layer)
         x = concatenate([x, input_layer])
 
-    #x = net.dense(x, 100, activation_function="relu")
-    x = net.lstm(x, 100, return_sequences=False)
-    x = net.dense(x, 50, td=False, activation_function="tanh")
-    x = net.dense(x, 10, td=False)
+    x = net.dense(x, 100, activation_function="tanh")
+    x = net.lstm(x, 10, return_sequences=False)
 
     outputs = []
     for measure in output_measures:
@@ -172,7 +170,7 @@ def load_network(conf):
             td=False,
             activation_function=conf.activation_functions["output_" + measure],
             name="output_" + measure
-            )
+        )
         outputs.append(output_layer)
 
     net.model = Model(inputs=inputs, outputs=outputs)

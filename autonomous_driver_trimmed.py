@@ -274,7 +274,7 @@ class Recorder():
         bp = bp_library.find('sensor.camera.rgb')
         bp.set_attribute('image_size_x', '460')
         bp.set_attribute('image_size_y', '345')
-        bp.set_attribute('sensor_tick', '0.1')
+        #bp.set_attribute('sensor_tick', '0.05')
 
         self._sensor.append(bp)
         self.sensor = server_world.spawn_actor(
@@ -288,29 +288,13 @@ class Recorder():
     @staticmethod
     def update(weak_self, image):
         self = weak_self()
-        # Update the agent with information from the world
-        self.agent.update_information(self.world)
-
-        # Store image beforehand since it will be used by the controller
+ 
+       # Store image beforehand since it will be used by the controller
         self.record_image(image)
 
-        # Get controller command
-        control, actual_steering = self.agent.run_step(self)
-        brake = control.brake
-        if control.brake < 0.1:
-            brake = 0.0
-        if control.throttle > brake:
-            brake = 0.0
-        control.brake = brake
-        control.manual_gear_shift = False
-
-        #Apply the control
-        self.world.player.apply_control(control)
-
+        control = self.agent._vehicle.get_control()
         # Store information
-        if self.record:
-            self.record_output(control, image.frame_number)
-
+        self.record_output(control, image.frame_number)
 
     def stop_recording(self, stop_condition):
         if len(self.recording_text) > 0:
@@ -320,7 +304,10 @@ class Recorder():
             else:
                 last_folder = 0
                 for folder in os.listdir(self.path):
-                    if folder == ".DS_Store" or folder == "store.h5":
+                    try:
+                        int(folder)
+                    except ValueError as ve:
+                        print(ve)
                         continue
                     if int(folder) >= last_folder:
                         last_folder = int(folder)+1
@@ -363,7 +350,7 @@ class Recorder():
 
         self.recording_text.append({
             'frame': frame_number,
-            'Speed': self.agent.speed,
+            'Speed': np.round(self.agent.speed/100, 4),
             'Throttle': control.throttle,
             'Steer': control.steer,
             'Brake': control.brake,
@@ -378,6 +365,7 @@ class Recorder():
             'Collision': self.world.collision_sensor.collision,
             "real_time(s)": pygame.time.get_ticks() / 1000,
             "Simulation_time(s)": datetime.timedelta(seconds=int(self.world.hud.simulation_time)),
+            "Controller_updates": self.controller_updates
         })
 
     def record_image(self, image):
@@ -487,6 +475,25 @@ def game_loop(args):
             if not world.world.wait_for_tick(10.0):
                 continue
 
+            # Update the agent with information from the world
+            agent.update_information(world)
+
+            # Get controller command
+            control, actual_steering = agent.run_step(recorder)
+            brake = control.brake
+            if control.brake > 0.5:
+                brake = 1
+            else:
+                brake = 0
+            #if control.throttle > brake:
+            #    brake = 0.0
+            control.brake = brake
+            control.manual_gear_shift = False
+
+            #Apply the control
+            world.player.apply_control(control)
+            recorder.controller_updates += 1
+
             if world.collision_sensor.collision:
                 print("Stopping recording session due to collision...")
                 import time
@@ -540,7 +547,6 @@ def game_loop(args):
 
 
 
-
     #except IOError as (errno, strerror):
     #    print("Error in main loop: error({0}): {1}".format(errno, strerror))
     except TypeError as t:
@@ -576,8 +582,8 @@ def game_loop(args):
                 file_name = str(counter)+"-" + args.model.split(".")[0] + "." + args.model.split(".")[1]
             else:
                 file_name = str(counter)+"-" + args.model.split(".")[0] + "." +  args.model.split(".")[1]
-            recording_to_video(path="Test_recordings", cur_folder=recorder.folder, file_name=file_name)
-            rate_recording(path="Test_recordings", cur_folder=recorder.folder, file_name=file_name)
+            recording_to_video(path=args.path, cur_folder=recorder.folder, file_name=file_name)
+            rate_recording(path=args.path, cur_folder=recorder.folder, file_name=file_name)
         pygame.quit()
 
 

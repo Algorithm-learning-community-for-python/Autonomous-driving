@@ -11,27 +11,30 @@ from autonomous_driver_trimmed import game_loop
 
 # Which model architecture to use
 #model_type = "Spatial"
-model_type = "Spatiotemporal"
-#model_type = "Temporal"
+#model_type = "Spatiotemporal"
+model_type = "Temporal"
 models_path = "Training/" + model_type + "/Stored_models/"
+#models_path = "transfer/Stored_models" + model_type + "/"
 
 # Which models to test
 all_models = False
-chosen_folders = [5]
+chosen_folders = [28]
 
 # Which checkpoints to test
 train_loss = False
 val_loss = True
 best_checkpoint_only = False
-every_n_epoch = 4
-threshold_epoch = 2 # Only applicable if best_checkpoint_only is false
+
+test_only_epoch = 0
+every_n_epoch = 1
+threshold_epoch = 0 # Only applicable if best_checkpoint_only is false
 
 # Define which tracks to test
 # Town 1 has 4 possible tracks
 # Town 2 has 3 possible tracks
-town = 1
+town = 2
 tracks_town_1 = [0]
-tracks_town_2 = [0, 1, 2]
+tracks_town_2 = [1]
 
 
 def get_paths(dir_path, split_on, sort_idx):
@@ -66,6 +69,9 @@ for path in data_paths:
             if best_checkpoint_only:
                 best_val_models.append(checkpoint)
                 break
+            elif test_only_epoch != 0:
+                 if int(checkpoint.split("-")[1]) == test_only_epoch:
+                    best_val_models.append(checkpoint)
             else:
                 if int(checkpoint.split("-")[1]) > threshold_epoch:
                     best_val_models.append(checkpoint)
@@ -74,6 +80,9 @@ for path in data_paths:
             if best_checkpoint_only:
                 best_val_models.append(checkpoint)
                 break
+            elif test_only_epoch != 0:
+                 if int(checkpoint.split("-")[1]) == test_only_epoch:
+                    best_val_models.append(checkpoint)
             else:
                 if int(checkpoint.split("-")[1]) > threshold_epoch:
                     best_val_models.append(checkpoint)
@@ -121,6 +130,7 @@ argparser.add_argument(
     type=int,
     help='set to 0 to ignore traffic lights')
 
+
 # Test the models
 
 waypoints_town_1 = [
@@ -131,29 +141,28 @@ waypoints_town_1 = [
     [60, 27],
 ]
 waypoints_town_2 = [
-    [30, 81],
+    [37, 81],
     [12, 6],
     [46, 45]
 ]
 if town == 1:
-    i = 0
-    for model in best_val_models:
-        if i % every_n_epoch == 0:
-            for track in tracks_town_1:
-                args = argparser.parse_args()
-                args.traffic_light = 0
-                args.cars = 0
-                args.random_weather = 0
-                args.model = model
-                args.model_type = model_type
-                args.waypoints = waypoints_town_1[track]
-                game_loop(args)
-        i += 1
-
-if town == 2:
-    for model in best_val_models:
-        for track in tracks_town_2:
+    waypoints = waypoints_town_1
+    tracks = tracks_town_1
+else:
+    waypoints = waypoints_town_2
+    tracks = tracks_town_2
+i = 0
+for model in best_val_models:
+    if i % every_n_epoch == 0:
+        for track in tracks:
             args = argparser.parse_args()
+            args.traffic_light = 0
+            args.cars = 0
+            args.random_weather = 0
             args.model = model
-            args.waypoints = waypoints_town_2[track]
+            args.model_type = model_type
+            args.waypoints = waypoints[track]
+            args.path = "Test_recordings/" + model_type
             game_loop(args)
+    i += 1
+

@@ -21,7 +21,7 @@ class Config(object):
             "optimizer": RMSprop(lr=self.lr),
             "lr": self.lr,
             "metrics": None,
-            "epochs": 30,
+            "epochs": 50,
             "batch_size": 16,
         }
         self.train_conf = TrainConf(**args)
@@ -29,18 +29,19 @@ class Config(object):
         self.train_valid_split = 0.2
         self.bottom_crop = 0 #115
         self.top_crop = 165
-        self.filter_input = False
+        self.filter_input = True
         self.filtering_degree = 0.9  # 0 = remove none, 1 = remove all
+        self.filtering_degree_90 = 0.5
         self.filter_threshold = 0.02
 
-        self.filtering_degree_speed = 0.8
+        self.filtering_degree_speed = 0
         self.filter_threshold_speed = 0.0001
         self.recordings_path = "/Measurments/modified_recording.csv"
         self.images_path = "/Updated_images/"
 
         self.folder_index = -1
         self.add_noise = False
-        self.skip_steps = 2
+        self.skip_steps = 1
         """
         Step size testing is dependent on: 
         - sensor_tick during recording (defined in the recorder class)
@@ -48,10 +49,21 @@ class Config(object):
         - fps during testing
         and it can be calculated by the following formula:
             step_size_testing = fps * sensor_tick * step_size_training
-        example fps=60, sensor_tick=0.1, step_size_training=1 ==> step_size_testing=6
+        example fps=30, sensor_tick=0.1, step_size_training=1 ==> step_size_testing=6
         """
         self.step_size_training = 2
         self.step_size_testing = 12
+
+        self.data_paths = [
+            #"cars_noise_random_weather",
+            #"cars_no_noise_cloudynoon",
+            #"cars_no_noise_random_weather",
+            "no_cars_noise_cloudynoon",
+            "no_cars_noise_random_weather",
+            "no_cars_no_noise_cloudynoon",
+            "no_cars_no_noise_random_weather"
+
+        ]
         self.available_columns = [
             "Throttle",
             "Reverse",
@@ -104,35 +116,40 @@ class Config(object):
             "TL": False,
             "Brake": True,
         }
+
         self.input_size_data = {
             "Image": [66, 200, 3], #"Image": [345-(self.top_crop+self.bottom_crop), 460, 3],
             "Direction": [7],
             "Speed": [1],
-            "speed_limit": [1], 
+            "speed_limit": [1],
             "ohe_speed_limit": [11],
             "TL_state": [3],
             "Output": 1,
             "Sequence_length": 4,
         }
+
         self.output_size_data = {
             "Throttle": 1,
             "Brake": 1,
             "Steer": 1,
         }
+
         self.loss_functions = {
             "output_Throttle": "mse", #Might be better with binary_crossentropy
-            "output_Brake": "mse",
+            "output_Brake": "binary_crossentropy",
             "output_Steer": "mse",
         }
+
         self.activation_functions = {
             "output_Throttle": None, #Might be better with binary_crossentropy
-            "output_Brake": None,
+            "output_Brake": "sigmoid",
             "output_Steer": None,
         }
-        self.loss_weights={
+
+        self.loss_weights = {
             'output_Throttle': 1.,
             'output_Brake': 1.,
-            'output_Steer': 2.
+            'output_Steer': 1.
         }
 
         self.direction_categories = [
