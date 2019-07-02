@@ -481,12 +481,12 @@ def game_loop(args):
             # Get controller command
             control, actual_steering = agent.run_step(recorder)
             brake = control.brake
-            if control.brake > 0.5:
-                brake = 1
-            else:
-                brake = 0
-            #if control.throttle > brake:
-            #    brake = 0.0
+            #if control.brake > 0.5:
+            #    brake = 1
+            #else:
+            #    brake = 0
+            if control.throttle > brake:
+                brake = 0.0
             control.brake = brake
             control.manual_gear_shift = False
 

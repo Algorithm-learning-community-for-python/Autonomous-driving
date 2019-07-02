@@ -18,7 +18,7 @@ models_path = "Training/" + model_type + "/Stored_models/"
 
 # Which models to test
 all_models = False
-chosen_folders = [28]
+chosen_folders = [29]
 
 # Which checkpoints to test
 train_loss = False
@@ -27,7 +27,7 @@ best_checkpoint_only = False
 
 test_only_epoch = 0
 every_n_epoch = 1
-threshold_epoch = 0 # Only applicable if best_checkpoint_only is false
+threshold_epoch = 1 # Only applicable if best_checkpoint_only is false
 
 # Define which tracks to test
 # Town 1 has 4 possible tracks

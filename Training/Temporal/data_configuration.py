@@ -136,13 +136,13 @@ class Config(object):
 
         self.loss_functions = {
             "output_Throttle": "mse", #Might be better with binary_crossentropy
-            "output_Brake": "binary_crossentropy",
+            "output_Brake": "mse",
             "output_Steer": "mse",
         }
 
         self.activation_functions = {
             "output_Throttle": None, #Might be better with binary_crossentropy
-            "output_Brake": "sigmoid",
+            "output_Brake": None,
             "output_Steer": None,
         }
 
