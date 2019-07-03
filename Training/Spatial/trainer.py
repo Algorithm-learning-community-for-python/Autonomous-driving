@@ -68,6 +68,6 @@ class Trainer(object):
             verbose=1
         )
 
-    def save(self):
+    def save(self, net="nvidia"):
         """ Saves Model(object, image and description), History and config """
-        save_results(self, path="../Spatial/")
+        save_results(self, path="../Spatial/", net=net)

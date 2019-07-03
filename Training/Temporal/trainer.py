@@ -71,6 +71,6 @@ class Trainer(object):
             verbose=1
         )
 
-    def save(self):
+    def save(self, net="network_temporal"):
         """ Saves Model(object, image and description), History and config """
-        save_results(self, path="../Temporal/")
+        save_results(self, path="../Temporal/", net=net)

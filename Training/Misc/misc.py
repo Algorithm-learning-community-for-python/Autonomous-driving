@@ -1,10 +1,11 @@
 """ Misc functions used for training """
 #pylint: disable=superfluous-parens
-
 from keras.utils import plot_model
 import cv2
 import os
 import matplotlib
+import shutil
+
 matplotlib.use("agg")
 
 import matplotlib.pyplot as plt
@@ -60,7 +61,7 @@ def create_new_folder(path):
 
 
 
-def save_results(trainer, path):
+def save_results(trainer, path, net=None):
     """
     Saves training results and settings of a trained model to Stored_models and Current_models
     currently saving:
@@ -75,6 +76,8 @@ def save_results(trainer, path):
     nh = trainer.network_handler
     history = trainer.history
     conf = trainer.conf
+    if net is not None:
+        network_path = path + "/Networks/" + net + ".py"
 
     cur_model_path = path + "Current_model/"
     path = path + "Stored_models/"
@@ -112,6 +115,7 @@ def save_results(trainer, path):
     f.write("Bottom crop: + " + str(conf.bottom_crop ) + "\n")
     f.write("Filtering: + " + str(conf.filter_input ) + "\n")
     f.write("Filtering degree steering: + " + str(conf.filtering_degree ) + "\n")
+    f.write("Filtering degree steering in 90kmh: + " + str(conf.filtering_degree_90) + "\n")
     f.write("Filtering threshold steering: + " + str(conf.filter_threshold ) + "\n")
     f.write("Filtering degree speed(red_lights): + " + str(conf.filtering_degree_speed ) + "\n")
     f.write("Filtering threshold speed(red_lights): + " + str(conf.filter_threshold_speed ) + "\n")
@@ -124,6 +128,8 @@ def save_results(trainer, path):
     f.write("Loss weights: "  + str(conf.loss_weights) + "\n")
     f.write("Activation_functions: " + str(conf.activation_functions) + "\n")
     f.write("Recordings: " + str(conf.recordings_path) + "\n")
+    f.write("Datasetets: \n")
+    f.write(str(conf.data_paths))
     f.close()
 
     # store plot of losses
@@ -143,6 +149,9 @@ def save_results(trainer, path):
     f.write(str(history.history) + "\n")
     f.close()
 
+    # Make a copy of the network used for training
+    if net is not None:
+        shutil.copyfile(network_path, path + "/network.py")
 
 def get_image(path, frame):
     """ Returns image given a folder path and frame number """
