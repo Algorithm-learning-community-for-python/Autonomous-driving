@@ -31,11 +31,18 @@ class BatchGenerator(Sequence):
         self.data_paths = []
         self.samples_per_data_path = []
         print("Fetching folders")
-        for dataset in conf.data_paths:
-            for folder in get_data_paths(data + "/" + dataset):
-                #df = pd.read_csv(folder + self.conf.recordings_path)
-                #self.samples_per_data_path.append(len(df.index))
-                self.data_paths.append(folder)
+        if data == "Training_data":
+            for dataset in conf.data_paths:
+                for folder in get_data_paths(data + "/" + dataset):
+                    #df = pd.read_csv(folder + self.conf.recordings_path)
+                    #self.samples_per_data_path.append(len(df.index))
+                    self.data_paths.append(folder)
+        else:
+            for dataset in conf.data_paths_validation_data:
+                for folder in get_data_paths(data + "/" + dataset):
+                    #df = pd.read_csv(folder + self.conf.recordings_path)
+                    #self.samples_per_data_path.append(len(df.index))
+                    self.data_paths.append(folder)
         print("Fetched " + str(len(self.data_paths)) + " episodes")
         self.indexes = []
         self.count_samples = 0
@@ -58,15 +65,15 @@ class BatchGenerator(Sequence):
         self.output_measures = [
             key for key in self.conf.available_columns if self.conf.output_data[key]
             ]
-        #self.get_measurements_recordings(data)
+
         self.X = {
             "input_Image": np.zeros([self.batch_size, self.seq_len] + self.conf.input_size_data["Image"]),
             "input_Direction": np.zeros([self.batch_size, self.seq_len] + self.conf.input_size_data["Direction"]),
             "input_Speed": np.zeros([self.batch_size, self.seq_len] + self.conf.input_size_data["Speed"]),
-            #"input_frame": np.zeros([self.batch_size, self.seq_len] + self.conf.input_size_data["frame"]),
             "input_ohe_speed_limit": np.zeros([self.batch_size, self.seq_len] + self.conf.input_size_data["ohe_speed_limit"]),
             "input_TL_state": np.zeros([self.batch_size, self.seq_len] + self.conf.input_size_data["TL_state"]) 
         }
+
         self.Y = {
             "output_Throttle": np.zeros([self.batch_size, 1]),
             "output_Brake": np.zeros([self.batch_size, 1]),
@@ -77,7 +84,12 @@ class BatchGenerator(Sequence):
         return int(np.floor(self.count_samples/self.batch_size))
 
     def __getitem__(self, idx):
-        cur_idx = idx*self.batch_size
+        # Shuffle randomly from the validation set
+        if self.data_type == "Validation_data":
+            cur_idx = random.randint(0, len(self.indexes))
+        else:
+            cur_idx = idx*self.batch_size
+
         batch = self.get_batch_of_measurement_recordings(cur_idx)
         for b in range(self.batch_size):
             #Set Input
@@ -106,7 +118,10 @@ class BatchGenerator(Sequence):
         path_idx, _ = self.indexes[cur_idx]
         df = pd.read_csv(self.data_paths[path_idx] + self.conf.recordings_path)
         batch = []
+        l = len(self.indexes) 
         for i in range(self.batch_size):
+            while cur_idx + 1 >= l:
+                cur_idx = np.random.randint(0, l)
             cur_path_idx, sequence_idx = self.indexes[cur_idx + i]
             if path_idx != cur_path_idx:
                 #print("new dataframe in memory")

@@ -13,8 +13,8 @@ class StopTrainingOnInput(EarlyStopping):
                 self.best_weights = self.model.get_weights()
 
                 
-        print('press "y" then enter within 5 seconds to stop training')
-        i, o, e = select.select( [sys.stdin], [], [], 5 )
+        print('press "y" then enter to stop training after next epoch')
+        i, o, e = select.select( [sys.stdin], [], [], 0.1 )
 
         if (i):
             answer =sys.stdin.readline().strip()
