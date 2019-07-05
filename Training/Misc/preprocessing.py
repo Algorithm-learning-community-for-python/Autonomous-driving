@@ -30,13 +30,11 @@ def filter_input_based_on_steering(dataframe, conf):
     print("-------------------- FILTERING DATASET BASED ON STEERING -----------------------")
     try:
         _ = dataframe.ohe_speed_limit
-        speed_limit_rep_20 = ("ohe_speed_limit", "[0. 0. 1. 0. 0. 0. 0. 0. 0. 0. 0.]")
-        speed_limit_rep_30 = ("ohe_speed_limit", "[0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0.]")
-        speed_limit_rep_60 = ("ohe_speed_limit", "[0. 0. 0. 0. 0. 0. 1. 0. 0. 0. 0.]")
-        speed_limit_rep_90 = ("ohe_speed_limit", "[0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0.]")
+        speed_limit_rep_30 = ("ohe_speed_limit", "[1. 0. 0.]")
+        speed_limit_rep_60 = ("ohe_speed_limit", "[0. 1. 0.]")
+        speed_limit_rep_90 = ("ohe_speed_limit", "[0. 0. 1.]")
 
     except AttributeError:
-        speed_limit_rep_20 = ("speed_limit", 0.2)
         speed_limit_rep_30 = ("speed_limit", 0.3)
         speed_limit_rep_60 = ("speed_limit", 0.6)
         speed_limit_rep_90 = ("speed_limit", 0.9)
@@ -45,7 +43,7 @@ def filter_input_based_on_steering(dataframe, conf):
     droppable = dataframe[(
         (np.abs(dataframe.Steer) < conf.filter_threshold) & \
         # only filter from lanefollow
-        ((dataframe.Direction == "[0. 0. 1. 0. 0. 0. 0.]") | (dataframe.Direction == "[0. 0. 0. 0. 0. 0. 1.]") | (dataframe.Direction == "RoadOption.LANEFOLLOW")) & \
+        ((dataframe.Direction == "[1. 0. 0. 0.]") | (dataframe.Direction == "RoadOption.LANEFOLLOW")) & \
         # only filtering from 30km/h since we still want a lot of data from high speed
         (dataframe[speed_limit_rep_30[0]] == speed_limit_rep_30[1]) & \
         # Dont remove samples where the car is breaking
@@ -54,7 +52,7 @@ def filter_input_based_on_steering(dataframe, conf):
 
     droppable90 = dataframe[(
         (np.abs(dataframe.Steer) < conf.filter_threshold) & \
-        ((dataframe.Direction == "[0. 0. 1. 0. 0. 0. 0.]") | (dataframe.Direction == "[0. 0. 0. 0. 0. 0. 1.]") | (dataframe.Direction == "RoadOption.LANEFOLLOW")) & \
+        ((dataframe.Direction == "[1. 0. 0. 0.]") | (dataframe.Direction == "RoadOption.LANEFOLLOW")) & \
         ((dataframe[speed_limit_rep_90[0]] == speed_limit_rep_90[1])) & \
         (dataframe.Brake == 0)
     )].index
@@ -79,13 +77,11 @@ def filter_sequence_input_based_on_steering(sequences, conf):
     print("-------------------- FILTERING DATASET BASED ON STEERING -----------------------")
     try:
         _ = sequences[0].ohe_speed_limit
-        speed_limit_rep_20 = ("ohe_speed_limit", "[0. 0. 1. 0. 0. 0. 0. 0. 0. 0. 0.]")
-        speed_limit_rep_30 = ("ohe_speed_limit", "[0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0.]")
-        speed_limit_rep_60 = ("ohe_speed_limit", "[0. 0. 0. 0. 0. 0. 1. 0. 0. 0. 0.]")
-        speed_limit_rep_90 = ("ohe_speed_limit", "[0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0.]")
+        speed_limit_rep_30 = ("ohe_speed_limit", "[1. 0. 0.]")
+        speed_limit_rep_60 = ("ohe_speed_limit", "[0. 1. 0.]")
+        speed_limit_rep_90 = ("ohe_speed_limit", "[0. 0. 1.]")
 
     except AttributeError:
-        speed_limit_rep_20 = ("speed_limit", 0.2)
         speed_limit_rep_30 = ("speed_limit", 0.3)
         speed_limit_rep_60 = ("speed_limit", 0.6)
         speed_limit_rep_90 = ("speed_limit", 0.9)
@@ -103,8 +99,7 @@ def filter_sequence_input_based_on_steering(sequences, conf):
 
         # Only filter from Lanefollow
         for direction in sequence["Direction"].values:
-            if direction != "[0. 0. 1. 0. 0. 0. 0.]" and direction != "[0. 0. 0. 0. 0. 0. 1.]" and \
-                direction != "RoadOption.LANEFOLLOW" and direction != "RoadOption.VOID":
+            if direction != "[1. 0. 0. 0.]" and direction != "RoadOption.LANEFOLLOW":
                 follow_lane = False
         if not follow_lane:
             filtered_sequences.append(sequence)
@@ -168,8 +163,8 @@ def filter_one_sequence_based_on_steering(sequence, conf):
     """ Filters dataframe consisting of sequences based on steering """
     try:
         _ = sequence.ohe_speed_limit
-        speed_limit_rep_60 = ("ohe_speed_limit", "[0. 0. 0. 0. 0. 0. 1. 0. 0. 0. 0.]")
-        speed_limit_rep_90 = ("ohe_speed_limit", "[0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0.]")
+        speed_limit_rep_60 = ("ohe_speed_limit", "[0. 1. 0.]")
+        speed_limit_rep_90 = ("ohe_speed_limit", "[0. 0. 1.]")
 
     except AttributeError:
         speed_limit_rep_60 = ("speed_limit", 0.6)
@@ -184,8 +179,7 @@ def filter_one_sequence_based_on_steering(sequence, conf):
 
     # Only filter from Lanefollow
     for direction in sequence["Direction"].values:
-        if direction != "[0. 0. 1. 0. 0. 0. 0.]" and direction != "[0. 0. 0. 0. 0. 0. 1.]" and \
-            direction != "RoadOption.LANEFOLLOW" and direction != "RoadOption.VOID":
+        if direction != "[1. 0. 0. 0.]" and direction != "RoadOption.LANEFOLLOW":
             follow_lane = False
     if not follow_lane:
         return False
@@ -271,7 +265,7 @@ def filter_sequence_input_based_on_speed_and_tl(sequences, conf):
             continue
 
         if random.randint(0, 10) > (10 - (10 * conf.filtering_degree_speed)):
-            count_dropped += 1            
+            count_dropped += 1
         else:
             filtered_sequences.append(sequence)
 
@@ -348,10 +342,10 @@ def filter_corrupt_input(dataframe):
     print("-------------------- FILTERING AWAY CORRUPT DATA -----------------------")
     droppable = dataframe[(
             ((dataframe.Steer == 1) & \
-            ((dataframe.Direction == "[0. 0. 0. 1. 0. 0. 0.]") | (dataframe.Direction == "RoadOption.LEFT")))
+            ((dataframe.Direction == "[0. 1. 0. 0.]") | (dataframe.Direction == "RoadOption.LEFT")))
             |
             ((dataframe.Steer == 1) & \
-            ((dataframe.Direction == "[0. 0. 0. 0. 0. 1. 0.]") | (dataframe.Direction == "RoadOption.STRAIGHT")))
+            ((dataframe.Direction == "[0. 0. 0. 1.]") | (dataframe.Direction == "RoadOption.STRAIGHT")))
     )].index
     #s = int(np.ceil(conf.filtering_degree_speed*len(droppable)))
     print("Dropping " + str(len(droppable)) + " out of " + str(len(dataframe.index)) + " total" )
@@ -373,7 +367,7 @@ def filter_corrupt_sequence_input(sequences):
     for sequence in sequences:
         steers = sequence["Steer"]
         directions = sequence["Direction"]
-        if (steers.values[-1] == 1 and directions.values[-1] == "[0. 0. 0. 1. 0. 0. 0.]") or (steers.values[-1] == 1 and directions.values[-1] == "[0. 0. 0. 0. 0. 1. 0.]"):
+        if (steers.values[-1] == 1 and directions.values[-1] == "[0. 1. 0. 0.]") or (steers.values[-1] == 1 and directions.values[-1] == "[0. 0. 0. 1.]"):
             print("dropped because error: \n" + str(sequence))
             count_dropped += 1
         else:
