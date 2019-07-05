@@ -219,6 +219,7 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
         f.write("--------------------------- Model info ---------------------------------------")
         f.write("\n")
         f.write("Time steps: " + str(time_steps))
+        f.write("\n")
         f.write("mean: " + str( float(sum(time_steps))/len(time_steps) ))
         f.write("\n")
         f.write("Model number: " + str(model_number))
@@ -235,38 +236,47 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
         f.write("--------------------------- Driving scores ---------------------------------------")
         f.write("\n")
         f.write("Steering score: " + str(steering_scores))
+        f.write("\n")
         f.write("mean: " + str( float(sum(steering_scores))/len(steering_scores) ))
 
         f.write("\n")
         f.write("Speed score: " + str(speed_scores))
+        f.write("\n")
         f.write("mean: " + str( float(sum(speed_scores))/len(speed_scores) ))
 
         f.write("\n")
         f.write("Speed below score: " + str(speed_below_scores))
+        f.write("\n")
         f.write("mean: " + str( float(sum(speed_below_scores))/len(speed_below_scores) ))
 
         f.write("\n")
         f.write("Speed above score: " + str(speed_above_scores))
+        f.write("\n")
         f.write("mean: " + str( float(sum(speed_above_scores))/len(speed_above_scores) ))
 
         f.write("\n")
         f.write("Count below speed_limit: " + str(count_belows))
+        f.write("\n")
         f.write("mean: " + str( float(sum(count_belows))/len(count_belows) ))
 
         f.write("\n")
         f.write("Count above speed_limit: " + str(count_aboves))
+        f.write("\n")
         f.write("mean: " + str( float(sum(count_aboves))/len(count_aboves) ))
 
         f.write("\n")
         f.write("Crossed broke line: " + str(crossed_broke_list))
+        f.write("\n")
         f.write("mean: " + str( float(sum(crossed_broke_list))/len(crossed_broke_list) ))
 
         f.write("\n")
         f.write('Crossed "none" line: ' + str(crossed_none_list))
+        f.write("\n")
         f.write("mean: " + str( float(sum(crossed_none_list))/len(crossed_none_list) ))
 
         f.write("\n")
         f.write("crossed other lines: " + str(crossed_others_list))
+        f.write("\n")
         f.write("mean: " + str( float(sum(crossed_others_list))/len(crossed_others_list) ))
 
         f.write("\n")
