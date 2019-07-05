@@ -22,9 +22,9 @@ def extend_steering_commands(dataframe):
     """
     for index, row in dataframe.iterrows():
         if row.Direction != "RoadOption.LANEFOLLOW" and row.Direction != "RoadOption.VOID":
-            rows_to_change = 10
+            rows_to_change = 15
             if index > rows_to_change:
-                for i in range(index-10, index):
+                for i in range(index-15, index):
                     if dataframe.loc[i, "Direction"] != "RoadOption.LANEFOLLOW" and \
                         dataframe.loc[i, "Direction"] != row.Direction:
                         rows_to_change = (index - 1) - i
