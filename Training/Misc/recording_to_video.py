@@ -46,46 +46,64 @@ def recording_to_video(path="../../Test_recordings", cur_folder=None, file_name=
                     direction = direction.split(".")[1]
                 else:
                     direction = "LANEFOLLOW"
+                if pd.notna(row["Upcoming_direction"]):
+                    upcoming_direction = row["Upcoming_direction"]
+                    upcoming_direction = upcoming_direction.split(".")[1]
+                else:
+                    upcoming_direction = "LANEFOLLOW"
 
 
                 tl = row["TL_state"]
                 cv2.putText(img,"Speed: " + str(speed) + " / " + str(speed_limit), 
-                    (10,280), 
+                    (10,270), 
                     cv2.FONT_HERSHEY_SIMPLEX, 
                     0.4,
                     (0,0,0),
                     1)
 
                 cv2.putText(img, "Traffic light: " + tl, 
-                    (10,295), 
+                    (10,285), 
                     cv2.FONT_HERSHEY_SIMPLEX, 
                     0.4,
                     (0,0,0),
                     1)
 
                 cv2.putText(img, "Direction: " + direction, 
-                    (10,310), 
+                    (10,300), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 
+                    0.4,
+                    (0,0,0),
+                    1)
+                cv2.putText(img, "Upcoming direction: " + upcoming_direction, 
+                    (10,315), 
                     cv2.FONT_HERSHEY_SIMPLEX, 
                     0.4,
                     (0,0,0),
                     1)
                 if use_hsv:
                     cv2.putText(hsv,"Speed: " + str(speed) + " / " + str(speed_limit), 
-                        (10,280), 
+                        (10,270), 
                         cv2.FONT_HERSHEY_SIMPLEX, 
                         0.4,
                         (0,0,0),
                         1)
 
                     cv2.putText(hsv, "Traffic light: " + tl, 
-                        (10,295), 
+                        (10,285), 
                         cv2.FONT_HERSHEY_SIMPLEX, 
                         0.4,
                         (0,0,0),
                         1)
 
                     cv2.putText(hsv, "Direction: " + direction, 
-                        (10,310), 
+                        (10,300), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 
+                        0.4,
+                        (0,0,0),
+                        1)
+                    
+                    cv2.putText(hsv, "Upcoming direction: " + upcoming_direction, 
+                        (10,315), 
                         cv2.FONT_HERSHEY_SIMPLEX, 
                         0.4,
                         (0,0,0),

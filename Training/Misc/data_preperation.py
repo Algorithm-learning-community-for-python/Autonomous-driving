@@ -8,9 +8,9 @@ import os
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from Misc.misc import get_image, get_data_paths, get_image_name
-from Spatiotemporal.data_configuration import Config
 from Misc.preprocessing import get_one_hot_encoded
-from Spatial.data_configuration import Config
+
+from Temporal.data_configuration import Config
 
 MEASURMENT_PATH = "/Measurments/recording.csv"
 conf = Config()
@@ -22,9 +22,9 @@ def extend_steering_commands(dataframe):
     """
     for index, row in dataframe.iterrows():
         if row.Direction != "RoadOption.LANEFOLLOW" and row.Direction != "RoadOption.VOID":
-            rows_to_change = 6
+            rows_to_change = 10
             if index > rows_to_change:
-                for i in range(index-6, index):
+                for i in range(index-10, index):
                     if dataframe.loc[i, "Direction"] != "RoadOption.LANEFOLLOW" and \
                         dataframe.loc[i, "Direction"] != row.Direction:
                         rows_to_change = (index - 1) - i
@@ -112,14 +112,14 @@ def update_images(dir_path="../../Training_data_temp", cur_folder=None, file_nam
             cv2.imwrite(path + "/Updated_images/" + get_image_name(cur_frame), img)
 
 
-root_folder = "Validation_data"
+root_folder = "Training_data"
 paths = os.listdir("../../" + root_folder)
 for p in paths:
-    if "no_cars" in p:
-        continue
-    else:
-        folder_path = root_folder + "/" + p
-        print("Updating images for " + p)
-        update_images(dir_path=folder_path, cur_folder=None)
-        print("Updating measurments for " + p)
-        update_measurements(folder_path)
+    #if "no_cars" in p:
+    #    continue
+    #else:
+    folder_path = root_folder + "/" + p
+    #print("Updating images for " + p)
+    #update_images(dir_path=folder_path, cur_folder=None)
+    print("Updating measurments for " + p)
+    update_measurements(folder_path)

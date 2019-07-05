@@ -3,8 +3,10 @@
 from Temporal.batch_generator import BatchGenerator
 import numpy as np
 from Temporal.data_configuration import Config
+from collections import Counter
 conf = Config()
-conf.train_conf.batch_size = 2
+conf.train_conf.batch_size = 16
+#conf.skip_steps = 3
 conf.filter_input = True
 #generator = BatchGenerator(conf)
 g = BatchGenerator(conf)
@@ -12,15 +14,19 @@ input_measures = [key for key in conf.available_columns if conf.input_data[key]]
 output_measures = [key for key in conf.available_columns if conf.output_data[key]]
 
 print("Length of generator: " + str(len(g)))
-exit()
-
+c = Counter()
 for b in range(len(g)):
     n = g[b]
     bx = n[0]
     by = n[1]
-    #print(b)
-    print(bx)
-    print(by)
+    print(b)
+    #targets=""
+    #for sequence in bx["input_frame"]:
+    #    c[str(sequence[-1])] += 1
+    #    targets = targets + "-" + str(int(sequence[-1]))
+    #print(targets)
+    #input()
+    #print(by)
     """
     print("INPUT SAMPLE BATCH")
     for i in range(conf.input_size_data["Sequence_length"]):
@@ -42,7 +48,8 @@ for b in range(len(g)):
         print(measure + " " + str(by["output_"+measure]) + "\n")
     
     """
-    raw_input()
+    #input()
+print(c.most_common(20))
 """
     sy = by[0]
     for sx in bx:

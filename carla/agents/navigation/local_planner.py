@@ -252,17 +252,17 @@ class LocalPlanner(object):
             # move using PID controllers
             control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint)
 
-        # purge the queue of obsolete waypoints
-        vehicle_transform = self._vehicle.get_transform()
-        max_index = -1
+            # purge the queue of obsolete waypoints
+            vehicle_transform = self._vehicle.get_transform()
+            max_index = -1
 
-        for i, (waypoint, _) in enumerate(self._waypoint_buffer):
-            if distance_vehicle(
-                    waypoint, vehicle_transform) < self._min_distance:
-                max_index = i
-        if max_index >= 0:
-            for i in range(max_index + 1):
-                self._waypoint_buffer.popleft()
+            for i, (waypoint, _) in enumerate(self._waypoint_buffer):
+                if distance_vehicle(
+                        waypoint, vehicle_transform) < self._min_distance:
+                    max_index = i
+            if max_index >= 0:
+                for i in range(max_index + 1):
+                    self._waypoint_buffer.popleft()
 
         if debug:
             draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], self._vehicle.get_location().z + 1.0)

@@ -1,4 +1,3 @@
-
 from keras.optimizers import Adam
 
 class TrainConf:
@@ -15,43 +14,57 @@ class TrainConf:
 class Config(object):
     """ Contains settings used for Training and configuration """
     def __init__(self):
-        lr = 0.00012
+        self.lr = 0.00012
         args = {
             "loss": "mse",
-            "optimizer": Adam(lr),
-            "lr": lr,
+            "optimizer": Adam(self.lr),
+            "lr": self.lr,
             "metrics": None,
             "epochs": 30,
             "batch_size": 16,
         }
         self.train_conf = TrainConf(**args)
         self.model_type = "Spatial"
-        self.train_valid_split = 0.2
+        self.images_path = "/Updated_images/"
+        self.recordings_path = "/Measurments/modified_recording.csv"
+
+        self.train_valid_split = 0.3
+        self.steps_per_epoch = 2000
+        self.validation_steps = int(self.steps_per_epoch * self.train_valid_split)
+
         self.bottom_crop = 0
         self.top_crop = 165
-        self.filter_input = True
-        self.filtering_degree = 0.8  # 0 = remove none, 1 = remove all
-        self.filtering_degree_90 = 0.5
-        self.filter_threshold = 0.02
 
+        self.filter_input = True
+        self.filtering_degree = 0.95
+        self.filtering_degree_90 = 0.7
+        self.filter_threshold = 0.02
         self.filtering_degree_speed = 0.9
         self.filter_threshold_speed = 0.0001
-        self.recordings_path = "/Measurments/modified_recording.csv"
-        self.images_path = "/Updated_images/"
+
         self.folder_index = -1
         self.add_noise = False
 
         self.skip_steps = 1
 
         self.data_paths = [
-            #"cars_noise_random_weather",
-            #"cars_no_noise_cloudynoon",
-            #"cars_no_noise_random_weather",
+            "cars_noise_random_weather",
+            "cars_no_noise_cloudynoon",
+            "cars_no_noise_random_weather",
             "no_cars_noise_cloudynoon",
             "no_cars_noise_random_weather",
-            "no_cars_no_noise_cloudynoon",
+            #"no_cars_no_noise_cloudynoon",
             "no_cars_no_noise_random_weather"
+        ]
 
+        self.data_paths_validation_data = [
+            "cars_noise_random_weather",
+            #"cars_no_noise_cloudynoon",
+            "cars_no_noise_random_weather",
+            #"no_cars_noise_cloudynoon",
+            #"no_cars_noise_random_weather",
+            #"no_cars_no_noise_cloudynoon",
+            #"no_cars_no_noise_random_weather"
         ]
 
         self.available_columns = [
@@ -108,13 +121,13 @@ class Config(object):
         }
         self.input_size_data = {
             "Image": [66, 200, 3],
-            "Direction": [7],
+            "Direction": [4],
             "Speed": [1],
             "speed_limit": [1], 
-            "ohe_speed_limit": [11],
+            "ohe_speed_limit": [3],
             "TL_state": [3],
             "Output": 1,
-            "Sequence_length": 5,
+            "Sequence_length": 1,
         }
         self.output_size_data = {
             "Throttle": 1,
@@ -122,28 +135,28 @@ class Config(object):
             "Steer": 1,
         }
         self.loss_functions = {
-            "output_Throttle": "mse", #Might be better with binary_crossentropy
+            "output_Throttle": "mse",
             "output_Brake": "mse",
             "output_Steer": "mse",
         }
         self.activation_functions = {
-            "output_Throttle": None, #Might be better with binary_crossentropy
+            "output_Throttle": None,
             "output_Brake": None,
             "output_Steer": None,
         }
-        self.loss_weights={
+        self.loss_weights = {
             'output_Throttle': 1.,
             'output_Brake': 1.,
-            'output_Steer': 2.
+            'output_Steer': 1.
         }
         self.direction_categories = [
-            "RoadOption.VOID",
+            #"RoadOption.VOID",
             "RoadOption.LEFT",
             "RoadOption.RIGHT",
             "RoadOption.STRAIGHT",
             "RoadOption.LANEFOLLOW",
-            "RoadOption.CHANGELANELEFT",
-            "RoadOption.CHANGELANERIGHT"
+            #"RoadOption.CHANGELANELEFT",
+            #"RoadOption.CHANGELANERIGHT"
         ]
 
         self.tl_categories = [
@@ -152,17 +165,17 @@ class Config(object):
             "Red"
         ]
         self.sl_categories = [
-            0,
-            0.1,
-            0.2,
+            #0,
+            #0.1,
+            #0.2,
             0.3,
-            0.4,
-            0.5,
+            #0.4,
+            #0.5,
             0.6,
-            0.7,
-            0.8,
+            #0.7,
+            #0.8,
             0.9,
-            1,
+            #1,
         ]
 
         

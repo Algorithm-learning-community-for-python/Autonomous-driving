@@ -6,6 +6,7 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping
 from Spatial.Networks.nvidia import load_network
 from Spatial.batch_generator import BatchGenerator
 from Spatial.data_configuration import Config
+
 from Misc.misc import save_results
 from Misc.misc import create_new_folder
 from Misc.stop_training_on_request import StopTrainingOnInput
@@ -40,7 +41,7 @@ class Trainer(object):
 
     def initialise_generator_and_net(self):
         """ Creates a batch generator and a network handler"""
-        self.train_generator = BatchGenerator(self.conf)
+        self.train_generator = BatchGenerator(self.conf, data="Training_data")
         self.validation_generator = BatchGenerator(self.conf, data="Validation_data")
         self.network_handler = load_network(self.conf)
 
@@ -49,18 +50,19 @@ class Trainer(object):
         self.network_handler.model.compile(
             loss=self.conf.loss_functions,
             optimizer=self.conf.train_conf.optimizer,
-            #loss_weight=self.conf.loss_weights
+            loss_weight=self.conf.loss_weights
         )
         self.history = self.network_handler.model.fit_generator(
             self.train_generator,
             validation_data=self.validation_generator,
-            steps_per_epoch=len(self.train_generator),
-            validation_steps=len(self.validation_generator),
+            steps_per_epoch=self.conf.steps_per_epoch,
+            validation_steps=self.conf.validation_steps,
             epochs=self.conf.train_conf.epochs,
+            shuffle=True,
             callbacks=[
                 ModelCheckpoint(self.checkpoint_path_loss, monitor='loss', save_best_only=True, period=int(np.floor(self.conf.train_conf.epochs/10))),
                 ModelCheckpoint(self.checkpoint_path_val_loss, monitor='val_loss', save_best_only=True),
-                EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=1, mode='auto', baseline=None, restore_best_weights=True),
+                EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1, mode='auto', baseline=None, restore_best_weights=True),
                 StopTrainingOnInput()
             ],
             use_multiprocessing=True,

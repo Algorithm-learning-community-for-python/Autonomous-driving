@@ -82,16 +82,16 @@ class BasicAgent(Agent):
         self.direction = self._local_planner._target_road_option
         if self.direction is None:
             self.direction = RoadOption.LANEFOLLOW
-
-        self.upcoming_waypoint, self.upcoming_direction = self._local_planner.get_upcoming_waypoint_and_direction(steps=self.look_ahead_steps)
-  
-        if self.upcoming_direction is None:
-            self.upcoming_direction = RoadOption.LANEFOLLOW
-        
-        _, self.upcoming_direction_short = self._local_planner.get_upcoming_waypoint_and_direction(2)
-          
-        if self.upcoming_direction_short is None:
-            self.upcoming_direction_short = RoadOption.LANEFOLLOW
+        # During autonomous mode, this will be set by the controller
+        if not self.autonomous:
+            self.upcoming_waypoint, self.upcoming_direction = self._local_planner.get_upcoming_waypoint_and_direction(steps=self.look_ahead_steps)
+            if self.upcoming_direction is None:
+                self.upcoming_direction = RoadOption.LANEFOLLOW
+            
+            _, self.upcoming_direction_short = self._local_planner.get_upcoming_waypoint_and_direction(2)
+            
+            if self.upcoming_direction_short is None:
+                self.upcoming_direction_short = RoadOption.LANEFOLLOW
 
         self.is_at_traffic_light = world.player.is_at_traffic_light()
         if self.ignore_traffic_light:

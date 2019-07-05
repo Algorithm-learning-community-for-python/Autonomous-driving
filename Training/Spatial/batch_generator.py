@@ -1,6 +1,7 @@
 """Spatial generator"""
-from math import ceil
+from __future__ import print_function
 import random
+import pickle
 import pandas as pd
 import numpy as np
 import cv2
@@ -16,9 +17,18 @@ class BatchGenerator(Sequence):
         self.img_size = self.conf.input_size_data["Image"]
         self.batch_size = self.conf.train_conf.batch_size
         self.data = None
+        self.data_type = data
         self.data_paths = []
-        for folder in conf.data_paths:
-            self.data_paths.extend(get_data_paths(data + "/" + folder))
+
+        print("Fetching folders")
+        if data == "Training_data":
+            for dataset in conf.data_paths:
+                self.data_paths.extend(get_data_paths(data + "/" + dataset))
+        else:
+            for dataset in conf.data_paths_validation_data:
+                self.data_paths.extend(get_data_paths(data + "/" + dataset))
+        print("Fetched " + str(len(self.data_paths)) + " episodes")
+
         self.input_measures = [
             key for key in self.conf.available_columns if self.conf.input_data[key]
             ]
@@ -31,23 +41,25 @@ class BatchGenerator(Sequence):
         return int(np.floor(len(self.data.index)/self.batch_size))
 
     def __getitem__(self, idx):
+        # Shuffle randomly from the validation set
+        if self.data_type == "Validation_data":
+            cur_idx = random.randint(0, len(self.indexes)-1)
+        else:
+            cur_idx = idx*self.batch_size
+
         x = [[]]
         for i in range(len(self.input_measures)):
             x.append([])
         y = []
         for i in range(len(self.output_measures)):
             y.append([])
-        cur_idx = idx*self.batch_size
+        l = len(self.data.index)
         for _ in range(self.batch_size):
             # Add the current sequence to the batch
-            try:
-                row = self.data.iloc[cur_idx, :]
-            except IndexError as ie:
-                print("Error in row allocation")
-                print(ie)
-                print("index")
-                print(cur_idx)
-                print("length " + str(len(self.data.index)))
+            if cur_idx >= l:
+                cur_idx=0
+
+            row = self.data.iloc[cur_idx, :]
 
             x[0].append(self.get_image(row))
             input_measurements = row[self.input_measures]
@@ -59,7 +71,6 @@ class BatchGenerator(Sequence):
 
             for i, measure in enumerate(self.output_measures):
                 y[i].append(output_measurements[measure])
-            #print(cur_idx)
             cur_idx += 1
 
         # Convert x to dict to allow for multiple inputs

@@ -1,21 +1,20 @@
 """Temporal generator"""
+#pylint: disable=too-many-instance-attributes
+#pylint: disable=line-to-long
+#pylint: disable=undefined-variable
+#pylint: disable=no-member
 from __future__ import print_function
-from math import ceil
 import random
+import pickle
 import pandas as pd
 import numpy as np
 import cv2
-import pickle
 
 from keras.utils import Sequence
 from Misc.misc import get_image, get_data_paths
 from Misc.preprocessing import (
-    filter_sequence_input_based_on_steering, \
-    filter_sequence_input_based_on_not_moving, \
-    filter_corrupt_sequence_input, \
     filter_one_sequence_based_on_steering, \
     filter_one_sequence_based_on_not_moving, \
-    augment_image
 )
 
 class BatchGenerator(Sequence):
@@ -29,23 +28,19 @@ class BatchGenerator(Sequence):
         self.data = None
         self.data_type = data
         self.data_paths = []
-        self.samples_per_data_path = []
+        # Used to store set of path_index, sample_index
+        self.indexes = []
+        self.count_samples = 0
+
         print("Fetching folders")
         if data == "Training_data":
             for dataset in conf.data_paths:
-                for folder in get_data_paths(data + "/" + dataset):
-                    #df = pd.read_csv(folder + self.conf.recordings_path)
-                    #self.samples_per_data_path.append(len(df.index))
-                    self.data_paths.append(folder)
+                self.data_paths.extend(get_data_paths(data + "/" + dataset))
         else:
             for dataset in conf.data_paths_validation_data:
-                for folder in get_data_paths(data + "/" + dataset):
-                    #df = pd.read_csv(folder + self.conf.recordings_path)
-                    #self.samples_per_data_path.append(len(df.index))
-                    self.data_paths.append(folder)
+                self.data_paths.extend(get_data_paths(data + "/" + dataset))
         print("Fetched " + str(len(self.data_paths)) + " episodes")
-        self.indexes = []
-        self.count_samples = 0
+
         try:
             with open ('filtered_indexes_' + data, 'rb') as fp:
                 print("Found file containing filtered indexes, using these")
@@ -86,7 +81,7 @@ class BatchGenerator(Sequence):
     def __getitem__(self, idx):
         # Shuffle randomly from the validation set
         if self.data_type == "Validation_data":
-            cur_idx = random.randint(0, len(self.indexes))
+            cur_idx = random.randint(0, len(self.indexes)-1)
         else:
             cur_idx = idx*self.batch_size
 
@@ -118,14 +113,17 @@ class BatchGenerator(Sequence):
         path_idx, _ = self.indexes[cur_idx]
         df = pd.read_csv(self.data_paths[path_idx] + self.conf.recordings_path)
         batch = []
-        l = len(self.indexes) 
+        l = len(self.indexes)
+        exception_idx = 0
         for i in range(self.batch_size):
-            while cur_idx + 1 >= l:
-                cur_idx = np.random.randint(0, l)
-            cur_path_idx, sequence_idx = self.indexes[cur_idx + i]
+            if cur_idx + i >= l:
+                cur_path_idx, sequence_idx = self.indexes[exception_idx]
+                exception_idx += 1
+            else:
+                cur_path_idx, sequence_idx = self.indexes[cur_idx + i]
+
+
             if path_idx != cur_path_idx:
-                #print("new dataframe in memory")
-                #print(cur_path_idx)
                 df = pd.read_csv(self.data_paths[cur_path_idx] + self.conf.recordings_path)
                 path_idx = cur_path_idx
 
@@ -167,7 +165,7 @@ class BatchGenerator(Sequence):
             print("\r fetching indexes from path number " + str(p), end="")
             df = pd.read_csv(path + self.conf.recordings_path)
             l = len(df.index)
-            # Iterate until the batch is filled up
+
             for i in range(0, l, skip_steps):
                 if i + (self.seq_len*step_size) >= l:
                     break
@@ -177,7 +175,6 @@ class BatchGenerator(Sequence):
                 for sample_idx in range(i, i + (self.seq_len*step_size), step_size):
                     indexes.append(sample_idx)
                 temp_sequence = df.iloc[indexes, :].copy()
-                temp_sequence["Images_path"] = path + self.conf.images_path
                 
                 # Filter away sequence based on conditions
                 if self.conf.filter_input and self.data_type != "Validation_data":

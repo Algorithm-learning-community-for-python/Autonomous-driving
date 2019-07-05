@@ -1,40 +1,38 @@
 """ Module that tests multiple models at multiple tracks """
 #pylint: disable=invalid-name
+import os
+import argparse
+from autonomous_driver_trimmed import game_loop
+from Misc.rate_test_results import rate_recording
 # import warnings filter
 from warnings import simplefilter
 # ignore all future warnings
 simplefilter(action='ignore', category=FutureWarning)
 
-import os
-import argparse
-from autonomous_driver_trimmed import game_loop
 
 # Which model architecture to use
-#model_type = "Spatial"
-#model_type = "Spatiotemporal"
 model_type = "Temporal"
 models_path = "Training/" + model_type + "/Stored_models/"
-#models_path = "transfer/Stored_models" + model_type + "/"
 
 # Which models to test
 all_models = False
-chosen_folders = [29]
+chosen_folders = [39]
 
 # Which checkpoints to test
 train_loss = False
 val_loss = True
 best_checkpoint_only = False
 
-test_only_epoch = 0
+test_only_epoch = [21]
 every_n_epoch = 1
-threshold_epoch = 1 # Only applicable if best_checkpoint_only is false
+threshold_epoch = 0 # Only applicable if best_checkpoint_only is false
 
 # Define which tracks to test
 # Town 1 has 4 possible tracks
 # Town 2 has 3 possible tracks
 town = 2
 tracks_town_1 = [0]
-tracks_town_2 = [1]
+tracks_town_2 = [0, 2]
 
 
 def get_paths(dir_path, split_on, sort_idx):
@@ -70,7 +68,7 @@ for path in data_paths:
                 best_val_models.append(checkpoint)
                 break
             elif test_only_epoch != 0:
-                 if int(checkpoint.split("-")[1]) == test_only_epoch:
+                if int(checkpoint.split("-")[1]) == test_only_epoch:
                     best_val_models.append(checkpoint)
             else:
                 if int(checkpoint.split("-")[1]) > threshold_epoch:
@@ -80,8 +78,8 @@ for path in data_paths:
             if best_checkpoint_only:
                 best_val_models.append(checkpoint)
                 break
-            elif test_only_epoch != 0:
-                 if int(checkpoint.split("-")[1]) == test_only_epoch:
+            elif len(test_only_epoch) >= 1:
+                if int(checkpoint.split("-")[1]) in test_only_epoch:
                     best_val_models.append(checkpoint)
             else:
                 if int(checkpoint.split("-")[1]) > threshold_epoch:
@@ -152,6 +150,10 @@ else:
     waypoints = waypoints_town_2
     tracks = tracks_town_2
 i = 0
+results_folders = []
+file_names = []
+stop_conditions = []
+multi_file_name = "multi_test_model-" + str(chosen_folders[0])
 for model in best_val_models:
     if i % every_n_epoch == 0:
         for track in tracks:
@@ -163,6 +165,16 @@ for model in best_val_models:
             args.model_type = model_type
             args.waypoints = waypoints[track]
             args.path = "Test_recordings/" + model_type
-            game_loop(args)
+            stop_condition, results_folder, file_name = game_loop(args)
+            stop_conditions.append(stop_condition)
+            results_folders.append(results_folder)
+            file_names.append(file_name)
     i += 1
-
+rate_recording(
+    stop_conditions=stop_conditions,
+    path=args.path,
+    cur_folder=results_folders,
+    file_name=file_names,
+    multi_rating=True,
+    multi_file_name=multi_file_name
+)

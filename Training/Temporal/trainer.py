@@ -2,14 +2,14 @@
 #pylint: disable=superfluous-parens
 import os
 import numpy as np
-from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard
-from Temporal.Networks.network_temporal import load_network as load_network
+from keras.callbacks import ModelCheckpoint, EarlyStopping
+from Temporal.Networks.network_temporal import load_network
 from Temporal.batch_generator import BatchGenerator
 from Temporal.data_configuration import Config
 
-from Misc.stop_training_on_request import StopTrainingOnInput
 from Misc.misc import save_results
 from Misc.misc import create_new_folder
+from Misc.stop_training_on_request import StopTrainingOnInput
 
 class Trainer(object):
     """ Main class for training a new model """
@@ -41,7 +41,7 @@ class Trainer(object):
 
     def initialise_generator_and_net(self):
         """ Creates a batch generator and a network handler"""
-        self.train_generator = BatchGenerator(self.conf)
+        self.train_generator = BatchGenerator(self.conf, data="Training_data")
         self.validation_generator = BatchGenerator(self.conf, data="Validation_data")
         self.network_handler = load_network(self.conf)
 
@@ -54,7 +54,7 @@ class Trainer(object):
         )
         self.history = self.network_handler.model.fit_generator(
             self.train_generator,
-            validation_data=self.validation_generator, #[self.validation_data_X, self.validation_data_Y],
+            validation_data=self.validation_generator,
             steps_per_epoch=self.conf.steps_per_epoch,
             validation_steps=self.conf.validation_steps,
             epochs=self.conf.train_conf.epochs,
@@ -62,9 +62,7 @@ class Trainer(object):
             callbacks=[
                 ModelCheckpoint(self.checkpoint_path_loss, monitor='loss', save_best_only=True, period=int(np.floor(self.conf.train_conf.epochs/10))),
                 ModelCheckpoint(self.checkpoint_path_val_loss, monitor='val_loss', save_best_only=True),
-                EarlyStopping(monitor='val_loss', min_delta=0, patience=7, verbose=1, mode='auto', baseline=None, restore_best_weights=True),
-                #TensorBoard(self.validation_generator2, int(len(self.validation_generator2)/16), 16, log_dir="{}/{}".format(self.logs_dir, time.time()), histogram_freq=1, batch_size=16)
-                #TensorBoard(histogram_freq=0, batch_size=16, write_images=False, write_grads=False),
+                EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1, mode='auto', baseline=None, restore_best_weights=True),
                 StopTrainingOnInput()
             ],
             use_multiprocessing=True,

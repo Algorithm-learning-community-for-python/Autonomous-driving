@@ -18,8 +18,11 @@ import numpy as np
 from keras import backend as K
 from keras.models import load_model
 from keras.backend.tensorflow_backend import set_session
+from agents.tools.misc import distance_vehicle, draw_waypoints
 
 import tensorflow as tf
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
+
 from Misc.preprocessing import get_one_hot_encoded
 
 import carla
@@ -127,22 +130,67 @@ class ImitatorController(object):
     def get_direction(self):
         direction = self.agent.direction
         #self.previous_directions.append(direction)
-        _, upcoming_direction = self.agent._local_planner.get_upcoming_waypoint_and_direction(1)
-        if upcoming_direction != None and upcoming_direction.value != RoadOption.LANEFOLLOW.value:
-            direction = upcoming_direction
+        #if direction.value == RoadOption.LANEFOLLOW.value:
+        #    _, upcoming_direction = self.agent._local_planner.get_upcoming_waypoint_and_direction(2)
+        #    if upcoming_direction != None and upcoming_direction.value != RoadOption.LANEFOLLOW.value:
+        #       direction = upcoming_direction
+        
+        # purge the queue of obsolete waypoints
+        vehicle_transform = self._vehicle.get_transform()
+        max_index = -1
 
-        #if len(self.previous_directions)>10 and self.previous_directions[-10].value != RoadOption.LANEFOLLOW.value:
-            #print(self.previous_directions)
-        #    direction = self.previous_directions[-10]
+        for i, (waypoint, _) in enumerate(self.local_planner._waypoint_buffer):
+            if distance_vehicle(
+                    waypoint, vehicle_transform) < self.local_planner._min_distance:
+                max_index = i
+        if max_index >= 0:
+            for i in range(max_index + 1):
+                self.local_planner._waypoint_buffer.popleft()
+        
+        if direction.value == RoadOption.LANEFOLLOW.value:
+            upcoming_direction = None
+            upcoming_wp = None
+            l = len(self.local_planner._waypoint_buffer)
+
+            # Look in the current buffer after intersections
+            if l >= 1:
+                for (wp, updir) in self.local_planner._waypoint_buffer:
+                    if updir != None and updir.value != RoadOption.LANEFOLLOW.value:
+                        upcoming_direction = updir
+                        upcoming_wp = wp
+                        break
+
+            # If no intersection was found in the buffer, then look in the waypoints que
+            if upcoming_direction is None:
+                peek_distance = 5 - l
+                l2 = len(self.local_planner._waypoints_queue)
+                if l2 < peek_distance:
+                    peek_distance = l2
+
+                for i in range(peek_distance):
+                    wp, updir = self.agent._local_planner.get_upcoming_waypoint_and_direction(i)
+                    if updir != None and updir.value != RoadOption.LANEFOLLOW.value:
+                        upcoming_direction = updir
+                        upcoming_wp = wp
+                        break
+            
+            if upcoming_direction is not None:
+                direction = upcoming_direction
+                self.agent.upcoming_direction = upcoming_direction
+            else:
+                self.agent.upcoming_direction = RoadOption.LANEFOLLOW
+            #draw_waypoints(self._vehicle.get_world(), [upcoming_wp], self._vehicle.get_location().z + 1.0)
+        else:
+            self.agent.upcoming_direction = RoadOption.LANEFOLLOW
 
         direction = [str(direction)]
         direction = get_one_hot_encoded(self.conf.direction_categories, direction)
 
-        return np.array(direction).reshape(1,7)
+        return np.array(direction).reshape(1, self.conf.input_size_data["Direction"][0])
 
     def get_tl_state(self):
         tl_state = get_one_hot_encoded(self.conf.tl_categories, [self.agent.light_state])
-        return np.array(tl_state).reshape(1,3)
+        return np.array(tl_state).reshape(1, self.conf.input_size_data["TL_state"][0])
 
     def get_speed(self):
         return np.array([np.round(self.agent.speed/100, 4)])
@@ -152,7 +200,7 @@ class ImitatorController(object):
         if self.conf.input_data["ohe_speed_limit"]:
             speed_limit = [float(speed_limit/100)]
             speed_limit = get_one_hot_encoded(self.conf.sl_categories, speed_limit)
-            return np.array(speed_limit).reshape(1,11)
+            return np.array(speed_limit).reshape(1, self.conf.input_size_data["ohe_speed_limit"][0])
         else:
             return np.array([float(speed_limit)/100])
 

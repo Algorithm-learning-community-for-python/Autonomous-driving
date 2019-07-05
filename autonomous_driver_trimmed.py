@@ -543,7 +543,10 @@ def game_loop(args):
                 else:
                     print("Storing images and measurments...")
                     recorder.stop_recording(stop_condition)
-                return
+                    
+                    file_name = str(counter)+"-" + args.model.split(".")[0] + "." +  args.model.split(".")[1]
+
+                    return (stop_condition, recorder.folder, file_name)
 
 
 
@@ -570,12 +573,16 @@ def game_loop(args):
         print("Error in main loop.")
         print(v)
         exit()
+    except RuntimeError as re:
+        print("Error in main loop.")
+        print(re)
+        exit()
     except:
         print("Unexpected error:", sys.exc_info()[0])
         exit()
     
     finally:
-        print("EXITING")
+        print("\n Creating video and rating results")
         if recorder.folder:
             if args.model == None:
                 args.model = "./Training/Temporal/Current_model/" + os.listdir("./Training/Spatial/Current_model/")[0]
@@ -583,9 +590,8 @@ def game_loop(args):
             else:
                 file_name = str(counter)+"-" + args.model.split(".")[0] + "." +  args.model.split(".")[1]
             recording_to_video(path=args.path, cur_folder=recorder.folder, file_name=file_name)
-            rate_recording(path=args.path, cur_folder=recorder.folder, file_name=file_name)
+            rate_recording(stop_condition, path=args.path, cur_folder=recorder.folder, file_name=file_name)
         pygame.quit()
-
 
 # ==============================================================================
 # -- main() --------------------------------------------------------------
