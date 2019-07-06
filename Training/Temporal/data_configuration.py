@@ -61,22 +61,22 @@ class Config(object):
 
 
         self.data_paths = [
-            "cars_noise_random_weather",
-            "cars_no_noise_cloudynoon",
-            "cars_no_noise_random_weather",
+            #"cars_noise_random_weather",
+            #"cars_no_noise_cloudynoon",
+            #"cars_no_noise_random_weather",
             "no_cars_noise_cloudynoon",
             "no_cars_noise_random_weather",
-            #"no_cars_no_noise_cloudynoon",
+            "no_cars_no_noise_cloudynoon",
             "no_cars_no_noise_random_weather"
         ]
         self.data_paths_validation_data = [
-            "cars_noise_random_weather",
+            #"cars_noise_random_weather",
             #"cars_no_noise_cloudynoon",
-            "cars_no_noise_random_weather",
-            #"no_cars_noise_cloudynoon",
-            #"no_cars_noise_random_weather",
-            #"no_cars_no_noise_cloudynoon",
-            #"no_cars_no_noise_random_weather"
+            #"cars_no_noise_random_weather",
+            "no_cars_noise_cloudynoon",
+            "no_cars_noise_random_weather",
+            "no_cars_no_noise_cloudynoon",
+            "no_cars_no_noise_random_weather"
         ]
         self.available_columns = [
             "Throttle",
