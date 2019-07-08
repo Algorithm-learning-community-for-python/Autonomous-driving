@@ -40,9 +40,14 @@ class BatchGenerator(Sequence):
             for dataset in conf.data_paths_validation_data:
                 self.data_paths.extend(get_data_paths(data + "/" + dataset))
         print("Fetched " + str(len(self.data_paths)) + " episodes")
+        
+        if self.conf.filter_input:
+            fname = 'filtered_indexes_' + data
+        else:
+            fname = 'non_filtered_indexes_' + data
 
         try:
-            with open ('filtered_indexes_' + data, 'rb') as fp:
+            with open(fname, 'rb') as fp:
                 print("Found file containing filtered indexes, using these")
                 self.indexes = pickle.load(fp)
             self.count_samples = len(self.indexes)
@@ -51,7 +56,7 @@ class BatchGenerator(Sequence):
             print("No file found, creating index file")
             self.get_indexes()
             print("Storing index file for later use...")
-            with open('filtered_indexes_' + data, 'wb') as fp:
+            with open(fname, 'wb') as fp:
                 pickle.dump(self.indexes, fp)
             
         self.input_measures = [

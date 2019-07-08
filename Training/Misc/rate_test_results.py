@@ -222,6 +222,11 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
             tr_steer.append(steering_scores[i])
             tr_speed.append(speed_scores[i])
 
+        for i in targets_reached_indexes:
+            targets_reached_on_epochs.append(model_epoch[i])
+            tr_steer.append(steering_scores[i])
+            tr_speed.append(speed_scores[i])
+
         f = open(fname, append_write)
         f.write("=========================== RECORDING RESULTS ==================================")
         f.write("\n")
