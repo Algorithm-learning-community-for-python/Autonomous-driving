@@ -361,7 +361,7 @@ class Recorder():
             'fps': self.world.hud.server_fps,
             'Direction': self.agent.direction,
             'Upcoming_direction': self.agent.upcoming_direction,
-            'Lane_Invasion': self.agent.lane_invasion,
+            'Lane_Invasion': lane_invasion,
             'Collision': self.world.collision_sensor.collision,
             "real_time(s)": pygame.time.get_ticks() / 1000,
             "Simulation_time(s)": datetime.timedelta(seconds=int(self.world.hud.simulation_time)),

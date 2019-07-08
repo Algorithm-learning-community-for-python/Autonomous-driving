@@ -32,7 +32,8 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
     count_belows = []
     speed_above_scores = []
     count_aboves = []
-
+    targets_reached_on_epochs = []
+    targets_reached_indexes = []
     crossed_broke_list = []
     crossed_none_list = []
     crossed_others_list = []
@@ -47,11 +48,12 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
     not_moving = 0
     targets_reached = 0
     if stop_conditions is not None:
-        for stop_condition in stop_conditions:
+        for i, stop_condition in enumerate(stop_conditions):
             if stop_condition == "not_moving":
                 not_moving += 1
             elif stop_condition == "target_reached":
                 targets_reached += 1
+                targets_reached_indexes.append(i)
             elif stop_condition == "collision":
                 collisions += 1
     for path in DATA_PATHS:
@@ -92,7 +94,7 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
             if row.Collision:
                 collision = True
         if multi_rating:
-            steering_scores.append(int((steering_sum / len(df.index))*100))
+            steering_scores.append(np.round((steering_sum / len(df.index))*100, 2))
             speed_scores.append(np.round((speed_score / len(df.index)), 2))
             speed_below_scores.append(np.round((speed_below_score / count_below), 2))
             speed_above_scores.append(np.round((speed_above_score /count_above), 2))
@@ -102,7 +104,7 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
             crossed_none_list.append(crossed_none)
             crossed_others_list.append(crossed_others)
         else:
-            steering_score = int((steering_sum / len(df.index))*100)
+            steering_score = (steering_sum / len(df.index))*100
             speed_score = np.round((speed_score / len(df.index)), 2)
             speed_below_score = np.round((speed_below_score / count_below), 2)
             speed_above_score = np.round((speed_above_score /count_above), 2)
@@ -138,6 +140,7 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
                 else:
                     epoch =  model_info[7]
                     loss =  model_info[8]
+
         if not multi_rating:
             f = open(path + "/results.txt", "w")
             f.write("=========================== RECORDING RESULTS ==================================")
@@ -183,7 +186,9 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
             f.write("\n")
             f.close()
     if multi_rating:
-        for info in model_info:
+        tr_steer = []
+        tr_speed = []
+        for i, info in enumerate(model_info):
             mi = info.replace("/", "-").split("-")
             #["1200","Training", "Spatial", "Stored_models", "1", "Checkpoints", "val_loss", "08","0.116"]
             time_steps.append(int(mi[0]))
@@ -210,6 +215,11 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
             append_write = 'a' # append if already exists
         else:
             append_write = 'w' # make a new file if not
+
+        for i in targets_reached_indexes:
+            targets_reached_on_epochs.append(model_epoch[i])
+            tr_steer.append(steering_scores[i])
+            tr_speed.append(speed_scores[i])
 
         f = open(fname, append_write)
         f.write("=========================== RECORDING RESULTS ==================================")
@@ -257,12 +267,12 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
         f.write("\n")
         f.write("Count below speed_limit: " + str(count_belows))
         f.write("\n")
-        f.write("mean: " + str( float(sum(count_belows))/len(count_belows) ))
+        f.write("mean: " + str( float(sum(count_belows))/len(count_belows)))
 
         f.write("\n")
         f.write("Count above speed_limit: " + str(count_aboves))
         f.write("\n")
-        f.write("mean: " + str( float(sum(count_aboves))/len(count_aboves) ))
+        f.write("mean: " + str( float(sum(count_aboves))/len(count_aboves)))
 
         f.write("\n")
         f.write("Crossed broke line: " + str(crossed_broke_list))
@@ -281,6 +291,12 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
 
         f.write("\n")
         f.write("target_reached_count: " + str(targets_reached))
+        f.write("\n")
+        f.write("target_reached_epochs: " + str(targets_reached_on_epochs))
+        f.write("\n")
+        f.write("target_reached_steer: " + str(tr_steer))
+        f.write("\n")
+        f.write("target_reached_speed: " + str(tr_speed))
         f.write("\n")
         f.write("collision_count: " + str(collisions))
         f.write("\n")
