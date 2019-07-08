@@ -1,6 +1,8 @@
 """ Module to train a neural network """
 #pylint: disable=superfluous-parens
 #Todo: remove
+import sys
+sys.path.append("../../Training")
 import warnings
 warnings.filterwarnings("ignore")
 import argparse

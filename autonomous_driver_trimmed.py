@@ -361,7 +361,7 @@ class Recorder():
             'fps': self.world.hud.server_fps,
             'Direction': self.agent.direction,
             'Upcoming_direction': self.agent.upcoming_direction,
-            'Lane_Invasion': self.agent.lane_invasion,
+            'Lane_Invasion': lane_invasion,
             'Collision': self.world.collision_sensor.collision,
             "real_time(s)": pygame.time.get_ticks() / 1000,
             "Simulation_time(s)": datetime.timedelta(seconds=int(self.world.hud.simulation_time)),
@@ -520,7 +520,7 @@ def game_loop(args):
                 else:
                     not_moving_count = 0
                 previous_distance = distance
-                if not_moving_count > 20:
+                if not_moving_count > 10:
                     print("Not moving anymore... quiting recording")
                     stop_condition = "not_moving"
                     stop = True

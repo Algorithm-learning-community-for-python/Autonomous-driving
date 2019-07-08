@@ -137,13 +137,18 @@ def load_network(conf):
 
  
     #x = net.dense(x, 8, function="elu")
-    X = net.dense(X, 256, function="relu")
-    X = net.dropout(X, 0.4)
-    X = net.dense(X, 128, function="relu") 
-    X = net.dropout(X, 0.2)
-
+   # X = net.dense(X, 1024, function="relu")
+    #X = net.dropout(X, 0.2)
+    X = net.dense(X, 512, function="relu")
+    #X = net.dropout(X, 0.2)
+    X = net.dense(X, 256, function="relu") 
+    #X = net.dropout(X, 0.2)
+    X = net.dense(X, 64, function="relu") 
+    #X = net.dropout(X, 0.2)
+    #X = net.dense(X, 64, function="relu") 
+    #X = net.dropout(X, 0.2)
     #x = net.dropout(x, rate=0.5)
-    X = net.dense(X, 16)
+    X = net.dense(X, 10)
 
     
     #######     OUTPUT DATA     #######

@@ -15,13 +15,13 @@ class TrainConf:
 class Config(object):
     """ Contains settings used for Training and configuration """
     def __init__(self):
-        self.lr = 0.00012
+        self.lr = 0.000012
         args = {
             "loss": "mse",
             "optimizer": Adam(self.lr),
             "lr": self.lr,
             "metrics": None,
-            "epochs": 20,
+            "epochs": 100,
             "batch_size": 16,
         }
         self.train_conf = TrainConf(**args)
@@ -29,8 +29,8 @@ class Config(object):
         self.images_path = "/Updated_images/"
         self.recordings_path = "/Measurments/modified_recording.csv"
 
-        self.train_valid_split = 0.3
-        self.steps_per_epoch = 1000
+        self.train_valid_split = 1
+        self.steps_per_epoch = 2000
         self.validation_steps = int(self.steps_per_epoch * self.train_valid_split)
 
         self.bottom_crop = 0
@@ -39,7 +39,7 @@ class Config(object):
 
         self.filter_input = True
         self.filtering_degree = 0.8
-        self.filtering_degree_90 = 0.5
+        self.filtering_degree_90 = 0.6
         self.filter_threshold = 0.02
         self.filtering_degree_speed = 0.8
         self.filter_threshold_speed = 0.0001
@@ -60,7 +60,7 @@ class Config(object):
             step_size_testing = average_fps_trainging * fps
         example step_size_training=3, sensor_tick = 0.1, fps=60  ==> step_size_testing=12
         """
-        self.skip_steps = 2
+        self.skip_steps = 1
         self.step_size_training = 2
         self.step_size_testing = 6
 
@@ -69,18 +69,20 @@ class Config(object):
             "cars_noise_random_weather",
             "cars_no_noise_cloudynoon",
             "cars_no_noise_random_weather",
-            "no_cars_noise_cloudynoon",
+            "cars_noise_random_weather_2",
+            #"no_cars_noise_cloudynoon",
             "no_cars_noise_random_weather",
-            "no_cars_no_noise_cloudynoon",
-            "no_cars_no_noise_random_weather"
+            #"no_cars_no_noise_cloudynoon",
+            #"no_cars_no_noise_random_weather"
 
         ]
         self.data_paths_validation_data = [
             "cars_noise_random_weather",
-            #"cars_no_noise_cloudynoon",
-            #"cars_no_noise_random_weather",
+            "cars_no_noise_cloudynoon",
+            "cars_no_noise_random_weather",
+            "cars_noise_random_weather_2",
             #"no_cars_noise_cloudynoon",
-            #"no_cars_noise_random_weather",
+            "no_cars_noise_random_weather",
             #"no_cars_no_noise_cloudynoon",
             #"no_cars_no_noise_random_weather"
         ]
@@ -138,13 +140,13 @@ class Config(object):
         }
         self.input_size_data = {
             "Image": [66, 200, 3],
-            "Direction": [7],
+            "Direction": [4],
             "Speed": [1],
             "speed_limit": [1], 
-            "ohe_speed_limit": [11],
+            "ohe_speed_limit": [3],
             "TL_state": [3],
             "Output": 1,
-            "Sequence_length": 3,
+            "Sequence_length": 4,
         }
         self.output_size_data = {
             "Throttle": 1,
@@ -161,19 +163,20 @@ class Config(object):
             "output_Brake": None,
             "output_Steer": None,
         }
-        self.loss_weights={
+        self.loss_weights = {
             'output_Throttle': 1.,
             'output_Brake': 1.,
-            'output_Steer': 1.
+            'output_Steer': 4.
         }
+
         self.direction_categories = [
-            "RoadOption.VOID",
+            #"RoadOption.VOID",
             "RoadOption.LEFT",
             "RoadOption.RIGHT",
             "RoadOption.STRAIGHT",
             "RoadOption.LANEFOLLOW",
-            "RoadOption.CHANGELANELEFT",
-            "RoadOption.CHANGELANERIGHT"
+            #"RoadOption.CHANGELANELEFT",
+            #"RoadOption.CHANGELANERIGHT"
         ]
 
         self.tl_categories = [
@@ -182,15 +185,15 @@ class Config(object):
             "Red"
         ]
         self.sl_categories = [
-            0,
-            0.1,
-            0.2,
+            #0,
+            #0.1,
+            #0.2,
             0.3,
-            0.4,
-            0.5,
+            #0.4,
+            #0.5,
             0.6,
-            0.7,
-            0.8,
+            #0.7,
+            #0.8,
             0.9,
-            1,
+            #1,
         ]

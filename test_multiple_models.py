@@ -1,5 +1,7 @@
 """ Module that tests multiple models at multiple tracks """
 #pylint: disable=invalid-name
+import sys
+sys.path.append("Training")
 import os
 import argparse
 from autonomous_driver_trimmed import game_loop
@@ -11,19 +13,19 @@ simplefilter(action='ignore', category=FutureWarning)
 
 
 # Which model architecture to use
-model_type = "Temporal"
+model_type = "Spatiotemporal"
 models_path = "Training/" + model_type + "/Stored_models/"
 
 # Which models to test
 all_models = False
-chosen_folders = [39]
+chosen_folders = [15]
 
 # Which checkpoints to test
 train_loss = False
 val_loss = True
 best_checkpoint_only = False
 
-test_only_epoch = [21]
+test_only_epoch = []
 every_n_epoch = 1
 threshold_epoch = 0 # Only applicable if best_checkpoint_only is false
 
@@ -32,7 +34,7 @@ threshold_epoch = 0 # Only applicable if best_checkpoint_only is false
 # Town 2 has 3 possible tracks
 town = 2
 tracks_town_1 = [0]
-tracks_town_2 = [0, 2]
+tracks_town_2 = [0, 1, 2]
 
 
 def get_paths(dir_path, split_on, sort_idx):
@@ -149,32 +151,60 @@ if town == 1:
 else:
     waypoints = waypoints_town_2
     tracks = tracks_town_2
+
+
 i = 0
 results_folders = []
 file_names = []
 stop_conditions = []
 multi_file_name = "multi_test_model-" + str(chosen_folders[0])
-for model in best_val_models:
-    if i % every_n_epoch == 0:
-        for track in tracks:
-            args = argparser.parse_args()
-            args.traffic_light = 0
-            args.cars = 0
-            args.random_weather = 0
-            args.model = model
-            args.model_type = model_type
-            args.waypoints = waypoints[track]
-            args.path = "Test_recordings/" + model_type
-            stop_condition, results_folder, file_name = game_loop(args)
-            stop_conditions.append(stop_condition)
-            results_folders.append(results_folder)
-            file_names.append(file_name)
-    i += 1
-rate_recording(
-    stop_conditions=stop_conditions,
-    path=args.path,
-    cur_folder=results_folders,
-    file_name=file_names,
-    multi_rating=True,
-    multi_file_name=multi_file_name
-)
+current_model_nr = int(best_val_models[0].split("/")[3])
+try:
+    os.mkdir("Test_recordings/" + model_type +"/model-" + str(current_model_nr))
+except FileExistsError as fe:
+    print(fe)
+args = argparser.parse_args()
+
+for _ in range(1):
+    for model in best_val_models:
+        model_nr = int(model.split("/")[3])
+        if model_nr != current_model_nr:
+            rate_recording(
+                stop_conditions=stop_conditions,
+                path=args.path,
+                cur_folder=results_folders,
+                file_name=file_names,
+                multi_rating=True,
+                multi_file_name=multi_file_name
+            )
+            results_folders = []
+            file_names = []
+            stop_conditions = []
+            multi_file_name = "multi_test_model-" + str(model_nr)
+            current_model_nr = model_nr
+            os.mkdir("Test_recordings/" + model_type +"/model-" + str(current_model_nr))
+
+        if i % every_n_epoch == 0:
+            for track in tracks:
+                args = argparser.parse_args()
+                args.traffic_light = 0
+                args.cars = 0
+                args.random_weather = 0
+                args.model = model
+                args.model_type = model_type
+                args.waypoints = waypoints[track]
+                args.path = "Test_recordings/" + model_type + "/model-" + str(current_model_nr)
+                stop_condition, results_folder, file_name = game_loop(args)
+                stop_conditions.append(stop_condition)
+                results_folders.append(results_folder)
+                file_names.append(file_name)
+        i += 1
+
+    rate_recording(
+        stop_conditions=stop_conditions,
+        path=args.path,
+        cur_folder=results_folders,
+        file_name=file_names,
+        multi_rating=True,
+        multi_file_name=multi_file_name
+    )

@@ -60,9 +60,9 @@ class Trainer(object):
             epochs=self.conf.train_conf.epochs,
             shuffle=True,
             callbacks=[
-                ModelCheckpoint(self.checkpoint_path_loss, monitor='loss', save_best_only=True, period=int(np.floor(self.conf.train_conf.epochs/10))),
+                #ModelCheckpoint(self.checkpoint_path_loss, monitor='loss', save_best_only=True, period=int(np.floor(self.conf.train_conf.epochs/10))),
                 ModelCheckpoint(self.checkpoint_path_val_loss, monitor='val_loss', save_best_only=True),
-                EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1, mode='auto', baseline=None, restore_best_weights=True),
+                EarlyStopping(monitor='val_loss', min_delta=0, patience=20, verbose=1, mode='auto', baseline=None, restore_best_weights=True),
                 StopTrainingOnInput()
             ],
             use_multiprocessing=True,

@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "/home/xr-10/anaconda3/envs/carla_driver/bin/python",
+    "python.pythonPath": "/home/xr5-ubuntu/anaconda3/envs/py35/bin/python",
     "files.watcherExclude": {
         "**/Training_data/**": true,
         "**/Training_data_temp/**": true,
