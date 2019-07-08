@@ -520,7 +520,7 @@ def game_loop(args):
                 else:
                     not_moving_count = 0
                 previous_distance = distance
-                if not_moving_count > 20:
+                if not_moving_count > 10:
                     print("Not moving anymore... quiting recording")
                     stop_condition = "not_moving"
                     stop = True
