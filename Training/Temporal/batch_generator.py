@@ -15,6 +15,7 @@ from Misc.misc import get_image, get_data_paths
 from Misc.preprocessing import (
     filter_one_sequence_based_on_steering, \
     filter_one_sequence_based_on_not_moving, \
+    upsample_rare_occurances
 )
 
 class BatchGenerator(Sequence):
@@ -85,7 +86,7 @@ class BatchGenerator(Sequence):
 
     def __getitem__(self, idx):
         # Shuffle randomly from the validation set
-        if self.data_type == "Validation_data":
+        if self.data_type == "Validation_data" and self.conf.random_validation_sampling:
             cur_idx = random.randint(0, len(self.indexes)-1)
         else:
             cur_idx = idx*self.batch_size
@@ -166,11 +167,11 @@ class BatchGenerator(Sequence):
         skip_steps = self.conf.skip_steps
         count_filtered = 0
         count_samples = 0
+        count_upsampled = 0
         for p, path in enumerate(self.data_paths):
             print("\r fetching indexes from path number " + str(p), end="")
             df = pd.read_csv(path + self.conf.recordings_path)
             l = len(df.index)
-
             for i in range(0, l, skip_steps):
                 if i + (self.seq_len*step_size) >= l:
                     break
@@ -186,7 +187,24 @@ class BatchGenerator(Sequence):
                     if filter_one_sequence_based_on_steering(temp_sequence, self.conf) or filter_one_sequence_based_on_not_moving(temp_sequence, self.conf):
                         count_filtered += 1
                         continue
+                
+
+                if self.conf.upsample_input and self.data_type != "Validation_data":
+                    #print("here")
+
+                    upsample, amount = upsample_rare_occurances(temp_sequence, self.conf)
+                    if upsample:
+                        for _ in range(amount):
+                            count_upsampled += 1
+                            self.indexes.append((p, i))
+                        count_upsampled -= 1
+                    else:
+                        self.indexes.append((p, i))
+                else:
+                    self.indexes.append((p, i))
+
                 count_samples += 1
-                self.indexes.append((p,i))
+
         self.count_samples = count_samples
         print("\n Filtered out " + str(count_filtered) + " out of " + str(count_samples + count_filtered))
+        print("\n Added " + str(count_upsampled) + " copies in upsampling, new size " + str(count_samples + count_upsampled))

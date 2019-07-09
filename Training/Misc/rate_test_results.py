@@ -216,14 +216,10 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
         else:
             append_write = 'w' # make a new file if not
         targets_reached_folder = []
-        for i in targets_reached_indexes:
-            targets_reached_on_epochs.append(model_epoch[i])
-            targets_reached_folder.append(cur_folder[i])
-            tr_steer.append(steering_scores[i])
-            tr_speed.append(speed_scores[i])
 
         for i in targets_reached_indexes:
             targets_reached_on_epochs.append(model_epoch[i])
+            targets_reached_folder.append(cur_folder[i])
             tr_steer.append(steering_scores[i])
             tr_speed.append(speed_scores[i])
 

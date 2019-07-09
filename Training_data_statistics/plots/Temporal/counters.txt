@@ -1,0 +1,4 @@
+Total amount of samples: 255120steer_counterCounter({0: 1741, -1: 59, -2: 45, 1: 44, -3: 38, 2: 21, -4: 12, -5: 7, 5: 6, 3: 5, 4: 4, -6: 4, 6: 3, 8: 2, -9: 2, -7: 2, 7: 1, 13: 1, -14: 1, -12: 1, -8: 1})
+direction_counterCounter({0: 1892, 1: 60, 2: 48})
+speed_limit_counterCounter({0: 1097, 2: 563, 1: 340})
+traffic_light_counterCounter({0: 1677, 1: 322, 2: 1})
