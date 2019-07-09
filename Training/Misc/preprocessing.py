@@ -35,19 +35,26 @@ def upsample_rare_occurances(sequence, conf):
     except AttributeError:
         speed_limit_rep_60 = ("speed_limit", 0.6)
         speed_limit_rep_90 = ("speed_limit", 0.9)
+    abs_steer = abs(sequence["Steer"].values[-1])
+    if  abs_steer > 0.5 and (sequence["Direction"].values[-1] == "[1. 0. 0. 0.]" or sequence["Direction"].values[-1] == "RoadOption.LANEFOLLOW"):
+        return True, 10
 
-    if sequence["Steer"].values[-1] > 0.5 and (sequence["Direction"].values[-1] == "[1. 0. 0. 0.]" or sequence["Direction"].values[-1] == "RoadOption.LANEFOLLOW"):
-        return True, 3
+    if  abs_steer > 0.3 and (sequence["Direction"].values[-1] == "[1. 0. 0. 0.]" or sequence["Direction"].values[-1] == "RoadOption.LANEFOLLOW"):
+        return True, 5
 
-    if sequence["Steer"].values[-1] > 0.5:
+    if abs_steer > 0.3:
         return True, 3
 
     if sequence["Brake"].values[-1] == 1 and sequence.TL_state.values[-1] != "[0. 1. 0.]":
+        return True, 5
+
+    speed_limits = sequence[speed_limit_rep_60[0]].values
+    if speed_limits[0] == speed_limit_rep_60[1] or speed_limits[-1] == speed_limit_rep_60[1]:
         return True, 3
-    
-    for speed_limit in sequence[speed_limit_rep_60[0]].values:
-        if speed_limit == speed_limit_rep_60[1]:
-            return True, 3
+
+    if speed_limits[0] == speed_limit_rep_90[1] or speed_limits[-1] == speed_limit_rep_90[1]:
+        return True, 3
+
     return False, 0
 
 def filter_input_based_on_steering(dataframe, conf):

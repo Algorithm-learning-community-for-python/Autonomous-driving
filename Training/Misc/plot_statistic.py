@@ -33,10 +33,10 @@ else:
     from Spatial.batch_generator import BatchGenerator
 
 conf = Config()
-conf.filter_input = True
-conf.upsample_input = True
+conf.filter_input = False
+conf.upsample_input = False
 conf.random_validation_sampling = False
-conf.train_conf.batch_size = 256
+conf.train_conf.batch_size = 1024
 
 g = BatchGenerator(conf, data=data_set)
 input_measures = [key for key in conf.available_columns if conf.input_data[key]]
@@ -49,8 +49,8 @@ direction_counter = Counter()
 speed_limit_counter = Counter()
 traffic_light_counter = Counter()
 for b in range(len(g)):
-    if b % 100 == 0:
-        print("\r Progress: " + str(100*b/len(g)), end="")
+    #if b % 100 == 0:
+    print("\r Progress: " + str(100*b/len(g)), end="")
     n = g[b]
     bx = n[0]
     by = n[1]
@@ -99,24 +99,30 @@ def plot_piechart(counted, label_names, colors, title):
 def plot_histogram(counted, title):
     fig, ax = plt.subplots()
     ax.bar(list(counted.keys()), list(counted.values()))
+    ax.set_title(" ".join(title.split("_")[2:]))
     fig.savefig(path + "/" + title)
 
 dir_labels = ["Lanefollow", "Left", "Right", "Straight"]
 tl_labels = ["Green", "Red", "Yellow"]
+brake_labels = ["No braking", "braking"]
 sl_labels = ["30 km/h", "60 km/h", "90 km/h"]
 four_colors =  ["#003f5c", "#7a5195", "#ef5675", "#ffa600"]
 three_colors =  ["#003f5c", "#bc5090", "#ffa600"]
+two_colors  =  ["#003f5c", "#ffa600"]
 tl_color = ["Green", "Red", "Yellow"]
 plot_piechart(traffic_light_counter, tl_labels, three_colors, "pie_chart_Traffic_light_distribution")
 plot_piechart(speed_limit_counter, sl_labels, three_colors, "pie_chart_Speed_limit_distribution")
 plot_piechart(direction_counter, dir_labels, four_colors, "pie_chart_Direction_distribution")
-plot_histogram(steer_counter, "histogram_Steering")
+plot_piechart(brake_counter, brake_labels, three_colors, "pie_chart_Brake_distribution")
+
+plot_histogram(steer_counter, "histogram_Steering_distribution")
 
 
 f = open(path + "/counters.txt", "w+")
-f.write("Total amount of samples: " + str(len(g)))
+f.write("Total amount of samples: " + str(len(g)) + "\n")
 f.write("steer_counter" + str(steer_counter) + "\n")
 f.write("direction_counter" + str(direction_counter) + "\n")
+f.write("brake_counter" + str(brake_counter) + "\n")
 f.write("speed_limit_counter" + str(speed_limit_counter) + "\n")
 f.write("traffic_light_counter" + str(traffic_light_counter) + "\n")
 f.close()
