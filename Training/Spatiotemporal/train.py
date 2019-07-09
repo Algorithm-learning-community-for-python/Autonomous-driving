@@ -14,7 +14,7 @@ from Spatiotemporal.Networks.nvidiaa_v1 import load_network as load_nvidiaa_v1
 from Spatiotemporal.Networks.nvidiaa_v2 import load_network as load_nvidiaa_v2
 from Spatiotemporal.Networks.nvidiaa_v3 import load_network as load_nvidiaa_v3
 from Spatiotemporal.Networks.nvidiaa_v4 import load_network as load_nvidiaa_v4
-#from Spatiotemporal.Networks.nvidiaa_v5 import load_network as load_nvidiaa_v5
+from Spatiotemporal.Networks.nvidiaa_v5 import load_network as load_nvidiaa_v5
 
 
 
@@ -49,12 +49,12 @@ def train_multi():
     print("GRID SEARCH")
     recs = ["/Measurments/modified_recording.csv"] #"/Measurments/recording.csv", modified_recording
     batch_sizes = [16] #[8, 16, 32]
-    epochs = [20]
-    nets = [1]
+    epochs = [100]
+    nets = [1,2,3,4,5]
     sigmoid = [False]#, True]
     sequence_lengths = [4]
-    filtering = [True]
-    learning_rates = [0.00012]  #[0.00001, 0.0001, 0.001]#, 0.00005, 0.0002]
+    filtering = [False, True]
+    learning_rates = [0.000012]  #[0.00001, 0.0001, 0.001]#, 0.00005, 0.0002]
     #momentum = [0,0.5,1]
     #decay = [0,0.1, 0.2]
     #nesterov = [False, True, ]
@@ -75,7 +75,28 @@ def train_multi():
         trainer.network_handler = load_nvidiaa_v1(trainer.conf)
         trainer.train()
         trainer.save()"""
+    for n in nets:
+        print("##########################################################################")
+        print("########################  NEW TRAINING   #################################")
+        print("##########################################################################")
+        trainer = Trainer()
+        trainer.initialise_generator_and_net()
+        if n == 0:
+            trainer.network_handler = load_nvidia(trainer.conf)
+        if n == 1:
+            trainer.network_handler = load_nvidiaa_v1(trainer.conf)
+        if n == 2:
+            trainer.network_handler = load_nvidiaa_v2(trainer.conf)
+        if n == 3:
+            trainer.network_handler = load_nvidiaa_v3(trainer.conf)
+        if n == 4:
+            trainer.network_handler = load_nvidiaa_v4(trainer.conf)
+        if n == 5:
+            trainer.network_handler = load_nvidiaa_v5(trainer.conf)
 
+        trainer.train()
+        trainer.save()
+    """
     #Test networks
     for recording_data in recs:
         for s in sigmoid:
@@ -96,12 +117,12 @@ def train_multi():
                                 trainer = Trainer()
 
 
-                                trainer.conf.train_conf.epochs = e
-                                trainer.conf.train_conf.batch_size = b
-                                trainer.conf.filter_input = f
-                                trainer.conf.recordings_path = recording_data
-                                trainer.conf.train_conf.lr = lr
-                                trainer.conf.train_conf.optimizer = Adam(lr=lr)
+                                #trainer.conf.train_conf.epochs = e
+                                #trainer.conf.train_conf.batch_size = b
+                                #trainer.conf.filter_input = f
+                                #trainer.conf.recordings_path = recording_data
+                                #trainer.conf.train_conf.lr = lr
+                                #trainer.conf.train_conf.optimizer = Adam(lr=lr)
                                 if s:
                                     trainer.conf.loss_functions = {
                                         "output_Throttle": "mse", #Might be better with binary_crossentropy
@@ -125,12 +146,12 @@ def train_multi():
                                     trainer.network_handler = load_nvidiaa_v3(trainer.conf)
                                 if n == 4:
                                     trainer.network_handler = load_nvidiaa_v4(trainer.conf)
-                                #if n == 5:
-                                #    trainer.network_handler = load_nvidiaa_v5(trainer.conf)
+                                if n == 5:
+                                    trainer.network_handler = load_nvidiaa_v5(trainer.conf)
 
                                 trainer.train()
                                 trainer.save()
-
+    """
 def main():
     argparser = argparse.ArgumentParser(
         description='Training module for autonomous driving')

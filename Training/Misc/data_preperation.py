@@ -107,13 +107,18 @@ def update_images(dir_path="../../Training_data_temp", cur_folder=None, file_nam
         df = pd.read_csv(path + MEASURMENT_PATH)
         for j, row in df.iterrows():
             cur_frame = row["frame"]
-            img = get_image(path + "/Images/", cur_frame)
-            img_size = CONF.input_size_data["Image"]
-            img = img[CONF.top_crop:, :, :]
-            img = cv2.resize(img,(img_size[1], img_size[0]))
-            cv2.imwrite(path + "/Updated_images/" + get_image_name(cur_frame), img)
+            try:
+                img = get_image(path + "/Images/", cur_frame)
+                img_size = CONF.input_size_data["Image"]
+                img = img[CONF.top_crop:, :, :]
+                img = cv2.resize(img,(img_size[1], img_size[0]))
+                cv2.imwrite(path + "/Updated_images/" + get_image_name(cur_frame), img)
+            except TypeError as te:
+                pass
 
-
+folder_path = "../../Test_recordings/Spatiotemporal/model-16"
+update_images(dir_path=folder_path, cur_folder=3)
+"""
 root_folder = "Validation_data"
 paths = os.listdir("../../" + root_folder)
 for p in paths:
@@ -137,3 +142,5 @@ for p in paths:
     update_images(dir_path=folder_path, cur_folder=None)
     print("Updating measurments for " + p)
     update_measurements(folder_path)
+
+"""

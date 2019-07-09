@@ -15,7 +15,7 @@ class TrainConf:
 class Config(object):
     """ Contains settings used for Training and configuration """
     def __init__(self):
-        self.lr = 0.000012
+        self.lr = 0.00012
         args = {
             "loss": "mse",
             "optimizer": Adam(self.lr),
@@ -29,8 +29,8 @@ class Config(object):
         self.images_path = "/Updated_images/"
         self.recordings_path = "/Measurments/modified_recording.csv"
 
-        self.train_valid_split = 1
-        self.steps_per_epoch = 2000
+        self.train_valid_split = 0.5
+        self.steps_per_epoch = 4000
         self.validation_steps = int(self.steps_per_epoch * self.train_valid_split)
 
         self.bottom_crop = 0
@@ -66,6 +66,7 @@ class Config(object):
 
 
         self.data_paths = [
+            "cars_noise_rainy_weather",
             "cars_noise_random_weather",
             "cars_no_noise_cloudynoon",
             "cars_no_noise_random_weather",
@@ -77,6 +78,7 @@ class Config(object):
 
         ]
         self.data_paths_validation_data = [
+            "cars_noise_rainy_weather",
             "cars_noise_random_weather",
             "cars_no_noise_cloudynoon",
             "cars_no_noise_random_weather",

@@ -18,7 +18,7 @@ models_path = "Training/" + model_type + "/Stored_models/"
 
 # Which models to test
 all_models = False
-chosen_folders = [15]
+chosen_folders = [21]
 
 # Which checkpoints to test
 train_loss = False
@@ -34,7 +34,7 @@ threshold_epoch = 0 # Only applicable if best_checkpoint_only is false
 # Town 2 has 3 possible tracks
 town = 2
 tracks_town_1 = [0]
-tracks_town_2 = [0, 1, 2]
+tracks_town_2 = [0]
 
 
 def get_paths(dir_path, split_on, sort_idx):
