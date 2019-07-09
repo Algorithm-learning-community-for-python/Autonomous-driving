@@ -24,6 +24,32 @@ def get_one_hot_encoded(categories, values):
     onehot_encoded = onehot_encoder.transform(integer_encoded)
     return onehot_encoded
 
+
+def upsample_rare_occurances(sequence, conf):
+    """ Returns true if the sequence should be upsampled """
+    try:
+        _ = sequence.ohe_speed_limit
+        speed_limit_rep_60 = ("ohe_speed_limit", "[0. 1. 0.]")
+        speed_limit_rep_90 = ("ohe_speed_limit", "[0. 0. 1.]")
+
+    except AttributeError:
+        speed_limit_rep_60 = ("speed_limit", 0.6)
+        speed_limit_rep_90 = ("speed_limit", 0.9)
+
+    if sequence["Steer"].values[-1] > 0.5 and (sequence["Direction"].values[-1] == "[1. 0. 0. 0.]" or sequence["Direction"].values[-1] == "RoadOption.LANEFOLLOW"):
+        return True, 3
+
+    if sequence["Steer"].values[-1] > 0.5:
+        return True, 3
+
+    if sequence["Brake"].values[-1] == 1 and sequence.TL_state.values[-1] != "[0. 1. 0.]":
+        return True, 3
+    
+    for speed_limit in sequence[speed_limit_rep_60[0]].values:
+        if speed_limit == speed_limit_rep_60[1]:
+            return True, 3
+    return False, 0
+
 def filter_input_based_on_steering(dataframe, conf):
     """ Filters dataframe consisting of sequences based on steering """
     print("\n")

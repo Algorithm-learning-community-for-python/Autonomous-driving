@@ -2,7 +2,7 @@
 #pylint: disable=invalid-name
 #pylint: disable=superfluous-parens
 import pandas as pd
-from preprocessing import (
+from Misc.preprocessing import (
     filter_sequence_input_based_on_steering, \
     filter_sequence_input_based_on_not_moving, \
     filter_corrupt_sequence_input, \
@@ -12,7 +12,7 @@ import os
 import matplotlib
 matplotlib.use("agg")
 
-from misc import get_data_paths
+from Misc.misc import get_data_paths
 import matplotlib.pyplot as plt
 pd.set_option("display.max_rows", 500)
 

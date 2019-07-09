@@ -50,7 +50,7 @@ class Trainer(object):
         self.network_handler.model.compile(
             loss=self.conf.loss_functions,
             optimizer=self.conf.train_conf.optimizer,
-            loss_weight=self.conf.loss_weights
+            loss_weights=self.conf.loss_weights
         )
         self.history = self.network_handler.model.fit_generator(
             self.train_generator,
