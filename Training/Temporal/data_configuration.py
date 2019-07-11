@@ -15,10 +15,10 @@ class TrainConf:
 class Config(object):
     """ Contains settings used for Training and configuration """
     def __init__(self):
-        self.lr = 0.00012
+        self.lr = 0.000052
         args = {
             "loss": "mse",
-            "optimizer": RMSprop(lr=self.lr),
+            "optimizer": Adam(lr=self.lr),
             "lr": self.lr,
             "metrics": None,
             "epochs": 100,
@@ -29,23 +29,23 @@ class Config(object):
         self.images_path = "/Updated_images/"
         self.recordings_path = "/Measurments/modified_recording.csv"
 
-        self.train_valid_split = 0.4
+        self.train_valid_split = 0.5
         self.steps_per_epoch = 4000
         self.validation_steps = int(self.steps_per_epoch * self.train_valid_split)
-
+        self.random_validation_sampling = True
         self.bottom_crop = 0
         self.top_crop = 165
 
-        self.filter_input = True
-        self.filtering_degree = 0.95
-        self.filtering_degree_90 = 0.7
+        self.upsample_input = False
+        self.filter_input = False
+        self.filtering_degree = 0.7
+        self.filtering_degree_90 = 0.6
         self.filter_threshold = 0.02
-        self.filtering_degree_speed = 0.9
+        self.filtering_degree_speed = 0.7
         self.filter_threshold_speed = 0.0001
 
         self.folder_index = -1
         self.add_noise = False
-
         """
         Step size testing is dependent on:
         - sensor_tick during recording (defined in the recorder class)
@@ -56,27 +56,31 @@ class Config(object):
         example fps=30, sensor_tick=0.1, step_size_training=1 ==> step_size_testing=6
         """
         self.skip_steps = 1
-        self.step_size_training = 2
+        self.step_size_training = 4
         self.step_size_testing = 6
 
 
         self.data_paths = [
-            #"cars_noise_random_weather",
-            #"cars_no_noise_cloudynoon",
-            #"cars_no_noise_random_weather",
-            "no_cars_noise_cloudynoon",
+            "cars_noise_rainy_weather",
+            "cars_noise_random_weather",
+            "cars_noise_random_weather_2",
+            "cars_no_noise_cloudynoon",
+            "cars_no_noise_random_weather",
+            #"no_cars_noise_cloudynoon",
             "no_cars_noise_random_weather",
-            "no_cars_no_noise_cloudynoon",
-            "no_cars_no_noise_random_weather"
+            #"no_cars_no_noise_cloudynoon",
+            #"no_cars_no_noise_random_weather"
         ]
         self.data_paths_validation_data = [
-            #"cars_noise_random_weather",
-            #"cars_no_noise_cloudynoon",
-            #"cars_no_noise_random_weather",
-            "no_cars_noise_cloudynoon",
+            "cars_noise_rainy_weather",
+            "cars_noise_random_weather",
+            "cars_noise_random_weather_2",
+            "cars_no_noise_cloudynoon",
+            "cars_no_noise_random_weather",
+            #"no_cars_noise_cloudynoon",
             "no_cars_noise_random_weather",
-            "no_cars_no_noise_cloudynoon",
-            "no_cars_no_noise_random_weather"
+            #"no_cars_no_noise_cloudynoon",
+            #"no_cars_no_noise_random_weather"
         ]
         self.available_columns = [
             "Throttle",
@@ -139,7 +143,7 @@ class Config(object):
             "ohe_speed_limit": [3],
             "TL_state": [3],
             "Output": 1,
-            "Sequence_length": 5,
+            "Sequence_length": 8,
         }
 
         self.output_size_data = {
@@ -163,7 +167,7 @@ class Config(object):
         self.loss_weights = {
             'output_Throttle': 1.,
             'output_Brake': 1.,
-            'output_Steer': 1.
+            'output_Steer': 4.
         }
 
         self.direction_categories = [

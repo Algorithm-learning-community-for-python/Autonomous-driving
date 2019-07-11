@@ -36,24 +36,21 @@ def upsample_rare_occurances(sequence, conf):
         speed_limit_rep_60 = ("speed_limit", 0.6)
         speed_limit_rep_90 = ("speed_limit", 0.9)
     abs_steer = abs(sequence["Steer"].values[-1])
-    if  abs_steer > 0.5 and (sequence["Direction"].values[-1] == "[1. 0. 0. 0.]" or sequence["Direction"].values[-1] == "RoadOption.LANEFOLLOW"):
-        return True, 10
-
-    if  abs_steer > 0.3 and (sequence["Direction"].values[-1] == "[1. 0. 0. 0.]" or sequence["Direction"].values[-1] == "RoadOption.LANEFOLLOW"):
+    if  abs_steer > 0.5: # and (sequence["Direction"].values[-1] == "[1. 0. 0. 0.]" or sequence["Direction"].values[-1] == "RoadOption.LANEFOLLOW"):
         return True, 5
 
-    if abs_steer > 0.3:
-        return True, 3
+    if  abs_steer > 0.1: #and (sequence["Direction"].values[-1] == "[1. 0. 0. 0.]" or sequence["Direction"].values[-1] == "RoadOption.LANEFOLLOW"):
+        return True, 2
 
     if sequence["Brake"].values[-1] == 1 and sequence.TL_state.values[-1] != "[0. 1. 0.]":
-        return True, 5
+        return True, 3
 
     speed_limits = sequence[speed_limit_rep_60[0]].values
     if speed_limits[0] == speed_limit_rep_60[1] or speed_limits[-1] == speed_limit_rep_60[1]:
         return True, 3
 
     if speed_limits[0] == speed_limit_rep_90[1] or speed_limits[-1] == speed_limit_rep_90[1]:
-        return True, 3
+        return True, 2
 
     return False, 0
 
@@ -211,28 +208,27 @@ def filter_one_sequence_based_on_steering(sequence, conf):
     braking = False
 
     # Only filter from Lanefollow
-    for direction in sequence["Direction"].values:
+    for direction in sequence["Direction"].values[-4:]:
         if direction != "[1. 0. 0. 0.]" and direction != "RoadOption.LANEFOLLOW":
             follow_lane = False
     if not follow_lane:
         return False
 
     # Filter from 30km/h and filter 90km/h with a different threshold (means that 50% of the 90km/h will not have the chance to be filtered out)
-    for speed_limit in sequence[speed_limit_rep_60[0]].values:
-        if speed_limit == speed_limit_rep_60[1]:
-            speed_limit_60 = True
-        if speed_limit == speed_limit_rep_90[1]:
-            speed_limit_90 = True
+    
+    speed_limit_target = sequence[speed_limit_rep_60[0]].values[-1]
+    speed_limit_start = sequence[speed_limit_rep_60[0]].values[0]
+    if speed_limit_target == speed_limit_rep_60[1] or speed_limit_start == speed_limit_rep_60[1]:
+        speed_limit_60 = True
+    if speed_limit_target == speed_limit_rep_90[1] or speed_limit_start == speed_limit_rep_90[1]:
+        speed_limit_90 = True
     if speed_limit_60:
         return False
     elif speed_limit_90 and random.randint(0, 9) > conf.filtering_degree_90 * 10:
         return False
 
     # Only filter if steering is below threshold value
-    for steering in sequence["Steer"].values:
-        if steering > conf.filter_threshold:
-            low_steering = False
-    if not low_steering:
+    if sequence["Steer"].values[-1] > conf.filter_threshold:
         return False
 
 
@@ -354,15 +350,15 @@ def filter_sequence_input_based_on_not_moving(sequences, conf):
 def filter_one_sequence_based_on_not_moving(sequence, conf):
     """ Filters dataframe consisting of sequences based on the car not moving """
     # Add or remove the current sequence
-    speeds = sequence["Speed"].values
+    #speeds = sequence["Speed"].values
     standing_still = True
-    # Include sequences where it is either driving, just stopped
-    for speed in speeds:
-        if speed > conf.filter_threshold_speed:
-            standing_still = False
-    # Include sequences where it just start to accelerate
-    if sequence["Brake"].values[-1] == 0:
+    # Include sequences where it is either driving or just stopped
+    #for speed in speeds:
+    if sequence["Speed"].values[-1] > conf.filter_threshold_speed:
         standing_still = False
+    # Include sequences where it just start to accelerate
+    #if sequence["Brake"].values[-1] == 0:
+    #    standing_still = False
     drop = random.randint(0, 10) > (10 - (10 * conf.filtering_degree_speed))
     if standing_still and drop:
         return True

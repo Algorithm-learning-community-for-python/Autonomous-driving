@@ -5,7 +5,7 @@ import pandas as pd
 import os
 from Misc.misc import get_image
 
-def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folder=None, file_name=None, multi_rating=False, multi_file_name=None):
+def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folder=None, file_name=None, multi_rating=False, multi_file_name=None, conditions=None):
     # FILE NAME IS ACTUALLY MODEL INFORMATION
     model_info = file_name
     original_path = path
@@ -216,6 +216,7 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
         else:
             append_write = 'w' # make a new file if not
         targets_reached_folder = []
+
         for i in targets_reached_indexes:
             targets_reached_on_epochs.append(model_epoch[i])
             targets_reached_folder.append(cur_folder[i])
@@ -226,6 +227,8 @@ def rate_recording(stop_conditions=None, path="../../Test_recordings", cur_folde
         f.write("=========================== RECORDING RESULTS ==================================")
         f.write("\n")
         f.write("Total episodes: " + str(len(time_steps)))
+        f.write("\n")
+        f.write("Conditions: " + str(conditions))
         f.write("\n")
         f.write("--------------------------- Model info ---------------------------------------")
         f.write("\n")

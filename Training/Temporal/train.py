@@ -38,10 +38,31 @@ def train_multi():
     recs = ["/Measurments/modified_recording.csv"] #"/Measurments/recording.csv", modified_recording
     batch_sizes = [16] #[8, 16, 32]
     epochs = [50]
-    nets = [0, 1, 2]
+    nets = [1, 2, 3]
     sigmoid = [False]#, True]
     filtering = [True]
     learning_rates = [0.00001, 0.0001, 0.00015, 0.001, 0.01, 0.1]#, 0.00005, 0.0002]
+    for n in nets:
+        trainer = Trainer()
+        if n == 2:
+            trainer.conf.train_conf.optimizer = RMSprop(lr=0.000052)
+        trainer.initialise_generator_and_net()
+        if n == 0:
+            trainer.network_handler = load_network0(trainer.conf)
+        elif n == 1:
+            trainer.network_handler = load_network1(trainer.conf)
+        elif n == 2:
+            trainer.network_handler = load_network2(trainer.conf)
+        elif n == 3:
+            trainer.network_handler = load_network3(trainer.conf)
+        elif n == 4:
+            trainer.network_handler = load_network4(trainer.conf)
+        elif n == 5:
+            trainer.network_handler = load_network5(trainer.conf)
+
+        trainer.train()
+        trainer.save()
+    """
     for recording_data in recs:
         for n in nets:
             for s in sigmoid:
@@ -95,7 +116,7 @@ def train_multi():
 
                                 trainer.train()
                                 trainer.save()
-
+    """
 def main():
     argparser = argparse.ArgumentParser(
         description='Training module for autonomous driving')

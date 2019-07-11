@@ -131,25 +131,26 @@ def load_network(conf):
 
     # CONV 1
     x = net.conv(x, 24, 5, 2, activation="relu")
-    x = net.batch_norm(x)
+    #x = net.batch_norm(x)
     # CONV 2
     x = net.conv(x, 36, 5, 2, activation="relu")
-    x = net.batch_norm(x)
+    #x = net.batch_norm(x)
 
     # CONV 3
     x = net.conv(x, 48, 5, 2, activation="relu")
-    x = net.batch_norm(x)
+    #x = net.batch_norm(x)
+    #x = net.dropout(x, 0.5)
 
     # CONV 4
     x = net.conv(x, 64, 3, 1, activation="relu")
-    x = net.batch_norm(x)
+    #x = net.batch_norm(x)
 
-    # CONV 4
+    # CONV 5
     x = net.conv(x, 64, 3, 1, activation="relu")
-    x = net.batch_norm(x)
 
     # FLATTEN
     x = TimeDistributed(Flatten(), name="time_flatten")(x)
+     #x = net.batch_norm(x)
 
 
     #######     INPUT DATA     #######
@@ -158,9 +159,11 @@ def load_network(conf):
         inputs.append(input_layer)
         x = concatenate([x, input_layer])
 
-    x = net.lstm(x, 10, return_sequences=False)
-
-    x = net.dense(x, 10, td=False)
+    #x = net.dense(x, 100, activation_function="relu")
+    x = net.lstm(x, 256, return_sequences=False)
+    x = net.dense(x, 128, td=False, activation_function="relu")
+    x = net.dense(x, 64, td=False, activation_function="relu")
+    x = net.dense(x, 16, td=False)
 
     outputs = []
     for measure in output_measures:
@@ -170,7 +173,7 @@ def load_network(conf):
             td=False,
             activation_function=conf.activation_functions["output_" + measure],
             name="output_" + measure
-            )
+        )
         outputs.append(output_layer)
 
     net.model = Model(inputs=inputs, outputs=outputs)

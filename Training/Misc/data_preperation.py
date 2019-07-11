@@ -111,15 +111,22 @@ def update_images(dir_path="../../Training_data_temp", cur_folder=None, file_nam
             img = cv2.resize(img,(img_size[1], img_size[0]))
             cv2.imwrite(path + "/Updated_images/" + get_image_name(cur_frame), img)
 
+root_folder = "Validation_data"
+paths = os.listdir("../../" + root_folder)
+for p in paths:
+    if p == "cars_noise_rainy_weather":
+        folder_path = root_folder + "/" + p
+        print("Updating images for " + p)
+        update_images(dir_path=folder_path, cur_folder=None)
+        print("Updating measurments for " + p)
+        update_measurements(folder_path)
 
 root_folder = "Training_data"
 paths = os.listdir("../../" + root_folder)
 for p in paths:
-    #if "no_cars" in p:
-    #    continue
-    #else:
-    folder_path = root_folder + "/" + p
-    #print("Updating images for " + p)
-    #update_images(dir_path=folder_path, cur_folder=None)
-    print("Updating measurments for " + p)
-    update_measurements(folder_path)
+    if p == "cars_noise_rainy_weather":
+        folder_path = root_folder + "/" + p
+        print("Updating images for " + p)
+        update_images(dir_path=folder_path, cur_folder=None)
+        print("Updating measurments for " + p)
+        update_measurements(folder_path)

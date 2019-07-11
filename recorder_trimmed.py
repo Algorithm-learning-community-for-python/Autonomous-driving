@@ -381,8 +381,14 @@ def set_weather(world, random_weather):
         weather = train_weathers[index]
         weather_description = train_weather_names[index]
     else:
-        weather = train_weathers[1]
-        weather_description = train_weather_names[1]
+        r = 2# random.randint(0, 2)
+        weather = test_weathers[r]
+        if r == 0:
+            weather_description = "WetCloudyNoon" #train_weather_names[1]
+        elif r == 1:
+            weather_description = "MidRainyNoon" #train_weather_names[1]
+        else:
+            weather_description = "HardRainNoon" #train_weather_names[1]
 
     world.world.set_weather(weather)
     return weather_description

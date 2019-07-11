@@ -1,4 +1,6 @@
-Total amount of samples: 255120steer_counterCounter({0: 1741, -1: 59, -2: 45, 1: 44, -3: 38, 2: 21, -4: 12, -5: 7, 5: 6, 3: 5, 4: 4, -6: 4, 6: 3, 8: 2, -9: 2, -7: 2, 7: 1, 13: 1, -14: 1, -12: 1, -8: 1})
-direction_counterCounter({0: 1892, 1: 60, 2: 48})
-speed_limit_counterCounter({0: 1097, 2: 563, 1: 340})
-traffic_light_counterCounter({0: 1677, 1: 322, 2: 1})
+Total amount of samples: 32057
+steer_counterCounter({0: 458332, -1: 14299, 1: 10439, -2: 7642, 2: 4912, 3: 4818, -3: 3547, 4: 3087, 5: 1986, -4: 917, 6: 664, -6: 580, -5: 392, 7: 320, 8: 271, 9: 247, -7: 172, 10: 168, -8: 66, -9: 32, -10: 21})
+direction_counterCounter({0: 421328, 3: 33776, 1: 29600, 2: 28208})
+brake_counterCounter({0: 301987, 1: 210925})
+speed_limit_counterCounter({0: 465874, 2: 34866, 1: 12172})
+traffic_light_counterCounter({0: 421962, 1: 89827, 2: 1123})

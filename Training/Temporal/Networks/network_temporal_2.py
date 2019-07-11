@@ -150,7 +150,7 @@ def load_network(conf):
 
     # FLATTEN
     x = TimeDistributed(Flatten(), name="time_flatten")(x)
-    #x = net.batch_norm(x)
+     #x = net.batch_norm(x)
 
 
     #######     INPUT DATA     #######
@@ -160,9 +160,9 @@ def load_network(conf):
         x = concatenate([x, input_layer])
 
     #x = net.dense(x, 100, activation_function="relu")
-    x = net.lstm(x, 512, return_sequences=False)
-    x = net.dense(x, 256, td=False, activation_function="tanh")
-    x = net.dense(x, 32, td=False)
+    x = net.lstm(x, 256, return_sequences=False)
+    x = net.dense(x, 128, td=False, activation_function="tanh")
+    x = net.dense(x, 16, td=False)
 
     outputs = []
     for measure in output_measures:
@@ -172,7 +172,7 @@ def load_network(conf):
             td=False,
             activation_function=conf.activation_functions["output_" + measure],
             name="output_" + measure
-            )
+        )
         outputs.append(output_layer)
 
     net.model = Model(inputs=inputs, outputs=outputs)
