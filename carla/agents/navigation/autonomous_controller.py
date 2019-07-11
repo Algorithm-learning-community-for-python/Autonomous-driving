@@ -146,7 +146,8 @@ class ImitatorController(object):
         if max_index >= 0:
             for i in range(max_index + 1):
                 self.local_planner._waypoint_buffer.popleft()
-        
+        if direction is None:
+            direction=RoadOption.LANEFOLLOW
         if direction.value == RoadOption.LANEFOLLOW.value:
             upcoming_direction = None
             upcoming_wp = None

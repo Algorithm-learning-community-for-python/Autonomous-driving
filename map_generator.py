@@ -53,13 +53,21 @@ def main():
         world = client.get_world()
         map = world.get_map()
         spawn_points = map.get_spawn_points()
-        img = np.ones((3000,3000,3), np.uint8)
 
+        img = np.ones((1600,3200,3), np.uint8)
+        img = cv2.imread('../../images/town-2.png', 1)
+        print(img)
+        #cv2.imshow("img", img)
+        #cv2.waitKey(0)
+        img = cv2.resize(img, (3200,1600), interpolation = cv2.INTER_AREA)
+
+        offset_horisontal = 237
+        offset_vertical = -690
         for i, sp in enumerate(spawn_points):
-            print(sp.location)
-            cv2.circle(img,(int(sp.location.x)*7 +80 ,int(sp.location.y*5.4) + 80), 2, (255,255,255), -1)
+            #print(sp.location)
+            #cv2.circle(img,(int(sp.location.x)*7 +offset_horisontal ,int(sp.location.y*3) + offset_vertical), 2, (255,255,255), -1)
 
-            cv2.putText(img, str(i),(int(sp.location.x)*7 + 80 ,int(sp.location.y*5.4) + 80), cv2.FONT_HERSHEY_DUPLEX, 1, (255,255,255), 1)
+            cv2.putText(img, "["+str(i)+"]",(int(sp.location.x*14.24) + offset_horisontal ,int(sp.location.y*7.18) + offset_vertical), cv2.FONT_HERSHEY_DUPLEX, 1, (255,0,255), 1)
         cv2.imshow("img", img)
         cv2.waitKey(0)
         map.save_to_disk("map")

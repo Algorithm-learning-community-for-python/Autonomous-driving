@@ -913,6 +913,78 @@ class Recorder():
         image.convert(cc.Raw)
         self.images.append(image)
 
+def set_weather(world, random_weather):
+    train_weathers = [
+        carla.WeatherParameters.ClearNoon,
+        carla.WeatherParameters.CloudyNoon,
+        carla.WeatherParameters.WetNoon,
+        carla.WeatherParameters.SoftRainNoon,
+
+
+        carla.WeatherParameters.ClearSunset,
+        carla.WeatherParameters.CloudySunset,
+        carla.WeatherParameters.WetSunset,
+        carla.WeatherParameters.SoftRainSunset,
+    ]
+    train_weather_names = [
+        "ClearNoon",
+        "CloudyNoon",
+        "WetNoon",
+        "SoftRainNoon",
+
+        "ClearSunset",
+        "CloudySunset",
+        "WetSunset",
+        "SoftRainSunset"
+    ]
+    test_weathers = [
+        carla.WeatherParameters.ClearNoon,
+        carla.WeatherParameters.CloudyNoon,
+        carla.WeatherParameters.WetNoon,
+        carla.WeatherParameters.SoftRainNoon,
+
+        carla.WeatherParameters.WetCloudyNoon, # unseen
+        carla.WeatherParameters.MidRainyNoon,
+        carla.WeatherParameters.HardRainNoon,
+
+        carla.WeatherParameters.ClearSunset,
+        carla.WeatherParameters.CloudySunset,
+        carla.WeatherParameters.WetSunset,
+        carla.WeatherParameters.SoftRainSunset,
+
+        carla.WeatherParameters.WetCloudySunset, # unseen
+        carla.WeatherParameters.HardRainSunset, # unseen
+        carla.WeatherParameters.MidRainSunset, # unseen
+    ]
+    test_weather_names = [
+        "ClearNoon",
+        "CloudyNoon",
+        "WetNoon",
+        "SoftRainNoon",
+
+        "WetCloudyNoon",
+        "MidRainyNoon",
+        "HardRainNoon",
+
+        "ClearSunset",
+        "CloudySunset",
+        "WetSunset",
+        "SoftRainSunset"
+
+        "WetCloudySunset",
+        "HardRainSunset",
+        "MidRainSunset",
+    ]
+    if random_weather != -1:
+        index = random_weather #random.randint(0, len(train_weathers)-1)
+        weather = test_weathers[index]
+        weather_description = test_weather_names[index]
+    else:
+        weather = train_weathers[1]
+        weather_description = train_weather_names[1]
+
+    world.world.set_weather(weather)
+    return weather_description
 # ==============================================================================
 # -- game_loop() ---------------------------------------------------------
 # ==============================================================================
@@ -934,59 +1006,48 @@ def game_loop(args):
         hud = HUD(width, height)
 
         world = World(client.get_world(), hud, start_waypoint=args.waypoints[0])
-        n_vehicles = 80
-        #world.spawn_npc(client, n_vehicles=n_vehicles)
+        #Spawn cars
+        if args.cars == 1:
+            n_vehicles = 80
+            world.spawn_npc(client, n_vehicles=n_vehicles)
+        
+        #Set weather
+        weather_description = set_weather(world, args.random_weather)
 
-        train_weathers = [
-            carla.WeatherParameters.ClearNoon,
-            carla.WeatherParameters.CloudyNoon,
-            carla.WeatherParameters.WetNoon,
-            carla.WeatherParameters.SoftRainNoon,
-
-
-            carla.WeatherParameters.ClearSunset,
-            carla.WeatherParameters.CloudySunset,
-            carla.WeatherParameters.WetSunset,
-            carla.WeatherParameters.SoftRainSunset,
-
-        ]
-
-        test_weathers = [
-            carla.WeatherParameters.WetCloudyNoon,
-            carla.WeatherParameters.MidRainyNoon,
-            carla.WeatherParameters.HardRainNoon,
-
-            carla.WeatherParameters.WetCloudySunset,
-            carla.WeatherParameters.HardRainSunset,
-            carla.WeatherParameters.MidRainSunset,
-        ]
-        random_weather = 0
-        if random_weather == 1:
-            world.world.set_weather(np.random.choice(train_weathers))
+        # Ignore traffic light or not
+        if args.traffic_light == 0:
+            ignore_traffic_light = True
         else:
-            world.world.set_weather(carla.WeatherParameters.CloudyNoon)
-
+            ignore_traffic_light = False
         controller = KeyboardControl(world, False)
-        agent = BasicAgent(world.player, autonomous=True, model_path=args.model, model_type=args.model_type)
 
+        #Spawn agent
+        agent = BasicAgent(world.player, autonomous=True, model_path=args.model, model_type=args.model_type, ignore_traffic_light=ignore_traffic_light)
+
+        # Set start positiong and destination
         start_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
         destination = world.map.get_spawn_points()[args.waypoints[1]]
-
         agent.set_destination((destination.location.x,
                                destination.location.y,
                                destination.location.z))
 
-        distance = start_waypoint.transform.location.distance(
-                destination.location)
-
+        #Get initial distance
+        distance = start_waypoint.transform.location.distance(destination.location)
         print("Initial distance: " + str(distance))
+
+        # Initiate the recorder
         recorder = Recorder(world, agent, args.path)
         world.recorder = recorder
+        agent._local_planner._vehicle_controller.recorder = recorder
+        recorder.record = True
         counter = 0
         fps_que =[]
         stop = False
         not_moving_count = 0
         previous_distance = 0
+        distance_driven = 0
+        previous_waypoint = start_waypoint
+
         clock = pygame.time.Clock()
         while True:
             if controller.parse_events(client, world, clock, recorder):
@@ -999,27 +1060,106 @@ def game_loop(args):
             world.tick(clock)
             world.render(display)
             pygame.display.flip()
-            speed_limit = world.player.get_speed_limit()
-            agent._local_planner.set_speed(speed_limit)
 
             control = agent.run_step(recorder)
-            recorder.throttle = control.throttle
-            recorder.brake = control.brake
 
+            # Update the agent with information from the world
+            agent.update_information(world)
+
+            # Get controller command
+            control, actual_steering = agent.run_step(recorder)
             brake = control.brake
-            if control.brake < 0.1:
-                brake = 0.0
+            #if control.brake > 0.5:
+            #    brake = 1
+            #else:
+            #    brake = 0
             if control.throttle > brake:
                 brake = 0.0
             control.brake = brake
             control.manual_gear_shift = False
 
+            #Apply the control
             world.player.apply_control(control)
+            recorder.controller_updates += 1
+
+            if world.collision_sensor.collision:
+                print("Stopping recording session due to collision...")
+                import time
+                time.sleep(1)
+                stop_condition = "collision"
+                stop = True
+
+            # Stop recorder when target destination has been reached
+            if len(agent._local_planner._waypoints_queue) < 1:
+                print("Target Reached, stopping recording session...")
+                stop_condition = "target_reached"
+                stop = True
+
+            counter += 1
+            fps_que.append(world.hud.server_fps)
+            
+            if counter % 30 == 0:
+                cur_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
+                if cur_waypoint != previous_waypoint:
+                    distance_driven += cur_waypoint.transform.location.distance(previous_waypoint.transform.location)
+                previous_waypoint = cur_waypoint
+
+            if counter % 200 == 0:
+                print("step: " + str(counter))
+                cur_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
+                distance = cur_waypoint.transform.location.distance(destination.location)
+                print("Distance to goal= " + str(distance))
+                if abs(distance - previous_distance) < 2:
+                    not_moving_count += 1
+                else:
+                    not_moving_count = 0
+                previous_distance = distance
+                if not_moving_count > 5:
+                    print("Not moving anymore... quiting recording")
+                    stop_condition = "not_moving"
+                    stop = True
+
+            if stop:
+                recorder.record = False
+                if recorder.sensor is not None:
+                    recorder.sensor.destroy()
+                if world.collision_sensor.sensor is not None:
+                    world.collision_sensor.sensor.destroy()
+                if world.lane_invasion_sensor.sensor is not None:
+                    world.lane_invasion_sensor.sensor.destroy()
+                if world is not None:
+                    world.player.destroy()
+                    print('\ndestroying %d actors' % len(world.actor_list))
+                    client.apply_batch([carla.command.DestroyActor(x) for x in world.actor_list])
+
+                if counter < 50:
+                    print("WARNING: Didn't get far enough, error likely to occur during recording")
+                    stop_condition = "not_far_enough"
+                    recorder.stop_recording(stop_condition)
+
+                    file_name = str(counter)+"-" + args.model.split(".")[0] + "." +  args.model.split(".")[1]
+
+                    return (stop_condition, recorder.folder, file_name, distance_driven)
+                else:
+                    print("Storing images and measurments...")
+                    recorder.stop_recording(stop_condition)
+                    
+                    file_name = str(counter)+"-" + args.model.split(".")[0] + "." +  args.model.split(".")[1]
+
+                    return (stop_condition, recorder.folder, file_name, distance_driven)
+
+
 
     finally:
-        if world is not None:
-            world.destroy()
-
+        print("\n Creating video and rating results")
+        if recorder.folder:
+            if args.model == None:
+                args.model = "./Training/Temporal/Current_model/" + os.listdir("./Training/Spatial/Current_model/")[0]
+                file_name = str(counter)+"-" + args.model.split(".")[0] + "." + args.model.split(".")[1]
+            else:
+                file_name = str(counter)+"-" + args.model.split(".")[0] + "." +  args.model.split(".")[1]
+            #recording_to_video(path=args.path, cur_folder=recorder.folder, file_name=file_name)
+            rate_recording(stop_condition, path=args.path, cur_folder=recorder.folder, file_name=file_name)
         pygame.quit()
 
 # ==============================================================================

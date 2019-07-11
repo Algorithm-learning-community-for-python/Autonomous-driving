@@ -332,12 +332,13 @@ class Recorder():
                 dict_writer.writeheader()
                 dict_writer.writerows(self.recording_text)
             self.recording_text = []
+
             i = 0
             l = len(self.images)
             for image in self.images:
                 if i % (math.ceil(l/100)) == 0:
                     print("\r Storing image " + str(i) + " of " + str(l), end="")
-                if i % 4 == 0:
+                if i % 15 == 0:
                     image.save_to_disk(self.path + '/Images/%08d' % image.frame_number)
                 
                 i += 1
@@ -398,18 +399,47 @@ def set_weather(world, random_weather):
         "SoftRainSunset"
     ]
     test_weathers = [
-        carla.WeatherParameters.WetCloudyNoon,
+        carla.WeatherParameters.ClearNoon,
+        carla.WeatherParameters.CloudyNoon,
+        carla.WeatherParameters.WetNoon,
+        carla.WeatherParameters.SoftRainNoon,
+
+        carla.WeatherParameters.WetCloudyNoon, # unseen
         carla.WeatherParameters.MidRainyNoon,
         carla.WeatherParameters.HardRainNoon,
 
-        carla.WeatherParameters.WetCloudySunset,
-        carla.WeatherParameters.HardRainSunset,
-        carla.WeatherParameters.MidRainSunset,
+        carla.WeatherParameters.ClearSunset,
+        carla.WeatherParameters.CloudySunset,
+        carla.WeatherParameters.WetSunset,
+        carla.WeatherParameters.SoftRainSunset,
+
+        carla.WeatherParameters.WetCloudySunset, # unseen
+        carla.WeatherParameters.HardRainSunset, # unseen
+        carla.WeatherParameters.MidRainSunset, # unseen
     ]
-    if random_weather == 1:
-        index = random.randint(0, len(train_weathers)-1)
-        weather = train_weathers[index]
-        weather_description = train_weather_names[index]
+    test_weather_names = [
+        "ClearNoon",
+        "CloudyNoon",
+        "WetNoon",
+        "SoftRainNoon",
+
+        "WetCloudyNoon",
+        "MidRainyNoon",
+        "HardRainNoon",
+
+        "ClearSunset",
+        "CloudySunset",
+        "WetSunset",
+        "SoftRainSunset"
+
+        "WetCloudySunset",
+        "HardRainSunset",
+        "MidRainSunset",
+    ]
+    if random_weather != -1:
+        index = random_weather #random.randint(0, len(train_weathers)-1)
+        weather = test_weathers[index]
+        weather_description = test_weather_names[index]
     else:
         weather = train_weathers[1]
         weather_description = train_weather_names[1]
@@ -470,6 +500,9 @@ def game_loop(args):
         stop = False
         not_moving_count = 0
         previous_distance = 0
+        distance_driven = 0
+        previous_waypoint = start_waypoint
+
         while True:
             # as soon as the server is ready continue!
             if not world.world.wait_for_tick(10.0):
@@ -509,6 +542,12 @@ def game_loop(args):
 
             counter += 1
             fps_que.append(world.hud.server_fps)
+            
+            if counter % 30 == 0:
+                cur_waypoint = world.world.get_map().get_waypoint(agent._vehicle.get_location())
+                if cur_waypoint != previous_waypoint:
+                    distance_driven += cur_waypoint.transform.location.distance(previous_waypoint.transform.location)
+                previous_waypoint = cur_waypoint
 
             if counter % 200 == 0:
                 print("step: " + str(counter))
@@ -520,7 +559,7 @@ def game_loop(args):
                 else:
                     not_moving_count = 0
                 previous_distance = distance
-                if not_moving_count > 10:
+                if not_moving_count > 5:
                     print("Not moving anymore... quiting recording")
                     stop_condition = "not_moving"
                     stop = True
@@ -539,14 +578,20 @@ def game_loop(args):
                     client.apply_batch([carla.command.DestroyActor(x) for x in world.actor_list])
 
                 if counter < 50:
-                    print("Didn't get far enough, not storing recording")
+                    print("WARNING: Didn't get far enough, error likely to occur during recording")
+                    stop_condition = "not_far_enough"
+                    recorder.stop_recording(stop_condition)
+
+                    file_name = str(counter)+"-" + args.model.split(".")[0] + "." +  args.model.split(".")[1]
+
+                    return (stop_condition, recorder.folder, file_name, distance_driven)
                 else:
                     print("Storing images and measurments...")
                     recorder.stop_recording(stop_condition)
                     
                     file_name = str(counter)+"-" + args.model.split(".")[0] + "." +  args.model.split(".")[1]
 
-                    return (stop_condition, recorder.folder, file_name)
+                    return (stop_condition, recorder.folder, file_name, distance_driven)
 
 
 
@@ -589,7 +634,7 @@ def game_loop(args):
                 file_name = str(counter)+"-" + args.model.split(".")[0] + "." + args.model.split(".")[1]
             else:
                 file_name = str(counter)+"-" + args.model.split(".")[0] + "." +  args.model.split(".")[1]
-            recording_to_video(path=args.path, cur_folder=recorder.folder, file_name=file_name)
+            #recording_to_video(path=args.path, cur_folder=recorder.folder, file_name=file_name)
             rate_recording(stop_condition, path=args.path, cur_folder=recorder.folder, file_name=file_name)
         pygame.quit()
 
